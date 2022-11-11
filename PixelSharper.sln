@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PixelSharper.Core", "PixelSharper.Core\PixelSharper.Core.csproj", "{0F5B839E-FEDA-4536-B76B-A66CCADC6717}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PixelSharperTests", "PixelSharperTests\PixelSharperTests.csproj", "{2181D058-A313-4FC2-82A3-D7E4CA21FFB3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0F5B839E-FEDA-4536-B76B-A66CCADC6717}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F5B839E-FEDA-4536-B76B-A66CCADC6717}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F5B839E-FEDA-4536-B76B-A66CCADC6717}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F5B839E-FEDA-4536-B76B-A66CCADC6717}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2181D058-A313-4FC2-82A3-D7E4CA21FFB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2181D058-A313-4FC2-82A3-D7E4CA21FFB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2181D058-A313-4FC2-82A3-D7E4CA21FFB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2181D058-A313-4FC2-82A3-D7E4CA21FFB3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
