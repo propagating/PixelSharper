@@ -29,7 +29,8 @@ public struct Pixel : IEquatable<Pixel>
         DisplayMode = PixelDisplayMode.Normal;
     }
 
-    public Pixel(byte red, byte green, byte blue, byte alpha = default) : this()
+    //TODO: update alpha to use default from CoreConfig Settings
+    public Pixel(byte red, byte green, byte blue, byte alpha = 0XFF) : this()
     {
         N = (uint)(red | green << 8 | blue << 16 | alpha << 24);
         DisplayMode = PixelDisplayMode.Normal;
@@ -124,30 +125,30 @@ public struct Pixel : IEquatable<Pixel>
 
     #region Constants
 
-    public static readonly Pixel BLANK = new (0, 0, 0);
-    public static readonly Pixel GREY = new(192, 192, 192);
-    public static readonly Pixel DARK_GREY = new(128, 128, 128);
-    public static readonly Pixel VERY_DARK_GREY = new(64, 64, 64);
-    public static readonly Pixel RED = new(255, 0, 0);
-    public static readonly Pixel DARK_RED = new(128, 0, 0);
-    public static readonly Pixel VERY_DARK_RED = new(64, 0, 0);
-    public static readonly Pixel YELLOW = new(255, 255, 0);
-    public static readonly Pixel DARK_YELLOW = new(128, 128, 0);
-    public static readonly Pixel VERY_DARK_YELLOW = new(64, 64, 0);
-    public static readonly Pixel GREEN = new(0, 255, 0);
-    public static readonly Pixel DARK_GREEN = new(0, 128, 0);
-    public static readonly Pixel VERY_DARK_GREEN = new(0, 64, 0);
-    public static readonly Pixel CYAN = new(0, 255, 255);
-    public static readonly Pixel DARK_CYAN = new(0, 128, 128);
-    public static readonly Pixel VERY_DARK_CYAN = new(0, 64, 64);
-    public static readonly Pixel BLUE = new(0, 0, 255);
-    public static readonly Pixel DARK_BLUE = new(0, 0, 128);
-    public static readonly Pixel VERY_DARK_BLUE = new(0, 0, 64);
-    public static readonly Pixel MAGENTA = new(255, 0, 255);
-    public static readonly Pixel DARK_MAGENTA = new(128, 0, 128);
-    public static readonly Pixel VERY_DARK_MAGENTA = new(64, 0, 64);
-    public static readonly Pixel WHITE = new(255, 255, 255);
-    public static readonly Pixel BLACK = new(0, 0, 0);
+    public static readonly Pixel BLANK             = new(0  , 0  , 0);
+    public static readonly Pixel GREY              = new(192, 192, 192);
+    public static readonly Pixel DARK_GREY         = new(128, 128, 128);
+    public static readonly Pixel VERY_DARK_GREY    = new(64 , 64 , 64);
+    public static readonly Pixel RED               = new(255, 0  , 0);
+    public static readonly Pixel DARK_RED          = new(128, 0  , 0);
+    public static readonly Pixel VERY_DARK_RED     = new(64 , 0  , 0);
+    public static readonly Pixel YELLOW            = new(255, 255, 0);
+    public static readonly Pixel DARK_YELLOW       = new(128, 128, 0);
+    public static readonly Pixel VERY_DARK_YELLOW  = new(64 , 64 , 0);
+    public static readonly Pixel GREEN             = new(0  , 255, 0);
+    public static readonly Pixel DARK_GREEN        = new(0  , 128, 0);
+    public static readonly Pixel VERY_DARK_GREEN   = new(0  , 64 , 0);
+    public static readonly Pixel CYAN              = new(0  , 255, 255);
+    public static readonly Pixel DARK_CYAN         = new(0  , 128, 128);
+    public static readonly Pixel VERY_DARK_CYAN    = new(0  , 64 , 64);
+    public static readonly Pixel BLUE              = new(0  , 0  , 255);
+    public static readonly Pixel DARK_BLUE         = new(0  , 0  , 128);
+    public static readonly Pixel VERY_DARK_BLUE    = new(0  , 0  , 64);
+    public static readonly Pixel MAGENTA           = new(255, 0  , 255);
+    public static readonly Pixel DARK_MAGENTA      = new(128, 0  , 128);
+    public static readonly Pixel VERY_DARK_MAGENTA = new(64 , 0  , 64);
+    public static readonly Pixel WHITE             = new(255, 255, 255);
+    public static readonly Pixel BLACK             = new(0  , 0  , 0);
 
     #endregion
 }

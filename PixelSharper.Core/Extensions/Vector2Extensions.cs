@@ -46,6 +46,7 @@ public static class Vector2Extensions
         return new Vector2((float)Math.Ceiling(vec.X), (float)Math.Ceiling(vec.Y));
     }
 
+    //TODO: Add indicator to prevent double converting to cartesian/polar coordinates
     public static Vector2 ConvertToCartesian(Vector2 vec)
     {
         return new Vector2((float)(Math.Cos(vec.Y) * vec.X), (float)(Math.Sin(vec.Y) * vec.X));
