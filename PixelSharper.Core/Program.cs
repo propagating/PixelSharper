@@ -1,14 +1,14 @@
-﻿using System;
-using PixelSharper.Core;
-
-
-namespace PixelSharper.Core
+﻿namespace PixelSharper.Core
 {
     internal class Program
     {
         private static void Main()
         {
             var engine = new PixelSharperEngine();
+            if (engine.Construct(1, 1, 1, 1))
+            {
+                engine.Start();
+            }
         }
     }
     

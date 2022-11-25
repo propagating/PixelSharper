@@ -1,5 +1,3 @@
-using System.ComponentModel;
-
 namespace PixelSharper.Core.Enums;
 
 public enum PixelDisplayMode : byte

@@ -7,12 +7,12 @@ public abstract class CoreEngine
     public abstract bool OnUpdate(float elapsedTime);
     public static PixelConfiguration Configuration { get; set; }
 
-    public bool Construct(byte height, byte width, byte pixelWidth, byte pixelHeight)
+    public virtual bool Construct(byte height, byte width, byte pixelWidth, byte pixelHeight)
     {
         return true;
     }
 
-    public void Start()
+    public virtual void Start()
     {
         
     }

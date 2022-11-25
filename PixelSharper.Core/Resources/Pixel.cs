@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using PixelSharper.Core.Enums;
 
-namespace PixelSharper.Core;
+namespace PixelSharper.Core.Resources;
 
 [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 5)] 
 public struct Pixel : IEquatable<Pixel>
@@ -36,7 +36,7 @@ public struct Pixel : IEquatable<Pixel>
         DisplayMode = PixelDisplayMode.Normal;
     }
 
-    public static Pixel operator *(Pixel a, dynamic b)
+    public static Pixel operator *(Pixel a, float b)
     {
         byte nR = (byte)Math.Min(255, Math.Max(0, a.Red * b));
         byte nG = (byte)Math.Min(255, Math.Max(0, a.Green * b));
@@ -44,7 +44,7 @@ public struct Pixel : IEquatable<Pixel>
         return new Pixel(nR, nG, nB, a.Alpha);
     }
     
-    public static Pixel operator *(dynamic b, Pixel a)
+    public static Pixel operator *(float b, Pixel a)
     {
         byte nR = (byte)Math.Min(255, Math.Max(0, a.Red * b));
         byte nG = (byte)Math.Min(255, Math.Max(0, a.Green * b));
@@ -52,7 +52,7 @@ public struct Pixel : IEquatable<Pixel>
         return new Pixel(nR, nG, nB, a.Alpha);
     }
     
-    public static Pixel operator /(Pixel a, dynamic b)
+    public static Pixel operator /(Pixel a, float b)
     {
         byte nR = (byte)Math.Min(255, Math.Max(0, a.Red / b));
         byte nG = (byte)Math.Min(255, Math.Max(0, a.Green / b));
@@ -60,7 +60,7 @@ public struct Pixel : IEquatable<Pixel>
         return new Pixel(nR, nG, nB, a.Alpha);
     }
     
-    public static Pixel operator /(dynamic b, Pixel a)
+    public static Pixel operator /(float b, Pixel a)
     {
         byte nR = (byte)Math.Min(255, Math.Max(0, a.Red / b));
         byte nG = (byte)Math.Min(255, Math.Max(0, a.Green / b));
