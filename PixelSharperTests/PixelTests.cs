@@ -1,6 +1,5 @@
-using System.Security.Cryptography;
 using NUnit.Framework;
-using PixelSharper.Core;
+using PixelSharper.Core.Resources;
 
 
 namespace PixelSharperTests;
