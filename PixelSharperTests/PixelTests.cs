@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using PixelSharper.Core.Resources;
+using PixelSharper.Core.Components;
 
 
 namespace PixelSharperTests;

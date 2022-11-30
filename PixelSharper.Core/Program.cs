@@ -1,4 +1,6 @@
-﻿namespace PixelSharper.Core
+﻿using PixelSharper.Core.Resources;
+
+namespace PixelSharper.Core
 {
     internal class Program
     {
@@ -9,6 +11,16 @@
             {
                 engine.Start();
             }
+
+            var resources = new ResourcePack();
+            var directory = new DirectoryInfo("E:\\Projects\\C#\\PixelSharper\\PixelSharper.Core");
+            foreach (var file in directory.GetFiles())
+            {
+                resources.AddFileToPack(file.FullName);
+            }
+
+            resources.SaveResourcePack("C:\\Users\\Ryan\\Desktop\\testpack.txt", true);
+
         }
     }
     
