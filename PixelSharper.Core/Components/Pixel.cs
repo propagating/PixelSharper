@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using PixelSharper.Core.Enums;
 
-namespace PixelSharper.Core.Resources;
+namespace PixelSharper.Core.Components;
 
 [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 5)] 
 public struct Pixel : IEquatable<Pixel>

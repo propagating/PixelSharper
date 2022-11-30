@@ -1,4 +1,4 @@
-namespace PixelSharper.Core.Resources;
+namespace PixelSharper.Core.Components;
 
 public struct HardwareButton
 {
