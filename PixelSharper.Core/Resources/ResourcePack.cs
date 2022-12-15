@@ -1,11 +1,11 @@
 using System.Security.Cryptography;
-using System.Text;
 
 namespace PixelSharper.Core.Resources;
 
 public class ResourcePack
 {
-    private Dictionary<string, ResourceFile> FileMap { get; set; }
+    public Dictionary<string, ResourceFile> FileMap { get; set; }
+    private byte[] Buffer { get; set; }
     private Stream? ResourceStream { get; set; }
 
     private static readonly byte[] Salt =
@@ -23,7 +23,7 @@ public class ResourcePack
         {
             var info = new FileInfo(filePath);
             var resourceFile = new ResourceFile((int)info.Length);
-            FileMap[filePath] = resourceFile;
+            FileMap.Add(filePath, resourceFile);
             return true;
         }
 
@@ -45,7 +45,7 @@ public class ResourcePack
             return LoadResourcePack(filePath);
         }
 
-
+        byte[] binaryBuffer;
         using (var fs = new FileStream(filePath, FileMode.Open))
         {
             using (var aes = Aes.Create())
@@ -76,10 +76,11 @@ public class ResourcePack
 
                 using (var cs = new CryptoStream(fs, aes.CreateDecryptor(transformedKey, iv), CryptoStreamMode.Read))
                 {
+
                     using (var br = new BinaryReader(cs))
                     {
-                        var fileSize = br.ReadUInt32();
-                        var mapSize = br.ReadUInt32();
+                        var fileSize = br.ReadInt32();
+                        var mapSize = br.ReadInt32();
                         for (var i = 0; i < mapSize; i++)
                         {
                             var resourceName = br.ReadString();
@@ -88,24 +89,20 @@ public class ResourcePack
 
                             FileMap[resourceName] = new ResourceFile(resourceSize, resourceOffset);
                         }
+                        
 
-                        br.BaseStream.Seek(0, SeekOrigin.Begin);
-                        ResourceStream = new MemoryStream(br.ReadBytes((int)fs.Length));
                     }
                 }
-            
+
+
             }
         }
-       
         
-
-
-
         return false;
     }
 
     /// <summary>
-    /// Loads an unencrypted ResourceFile and FileMap from disk and populates the file stream
+    /// Loads an unencrypted ResourceFile and FileMap from disk
     /// </summary>
     /// <param name="filePath"></param>
     /// <returns></returns>
@@ -120,8 +117,8 @@ public class ResourcePack
         {
             using (var br = new BinaryReader(fs))
             {
-                var fileSize = br.ReadUInt32();
-                var mapSize = br.ReadUInt32();
+                var fileSize = br.ReadInt32();
+                var mapSize = br.ReadInt32();
                 for (var i = 0; i < mapSize; i++)
                 {
                     var resourceName = br.ReadString();
@@ -132,7 +129,7 @@ public class ResourcePack
                 }
                 
                 br.BaseStream.Seek(0, SeekOrigin.Begin);
-                ResourceStream = new MemoryStream(br.ReadBytes((int)fs.Length));
+                ResourceStream = new MemoryStream(br.ReadBytes((int)fs.Length), false);
             }
         }
 
@@ -152,6 +149,7 @@ public class ResourcePack
     /// <returns></returns>
     public bool SaveResourcePack(string filePath, bool encrypted, string key = "")
     {
+        var success = false;
         if (!encrypted)
         {
             return SaveResourcePack(filePath);
@@ -165,117 +163,115 @@ public class ResourcePack
             
             if (string.IsNullOrEmpty(key))
             {
-
-                aes.GenerateKey();
-               
-                var tempKey = Encoding.UTF8.GetString(aes.Key);
-
-
-                var fileInfo = new FileInfo(filePath);
-                var directory = fileInfo.Directory.FullName;
-                if (!Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                    
-                }
-                var newPath = directory + Path.DirectorySeparatorChar + "key.text";
-
-                using (var fs = new FileStream(newPath, FileMode.Create))
-                {
-                    using (var sw = new StreamWriter(fs))
-                    {
-                        sw.Write(@$"Generated Key : {tempKey}");
-                        sw.Flush();
-                    }
-                }
-                
-                transformedKey = TransformKey(tempKey);
+                return false;
             }
             else
             {
                 transformedKey = TransformKey(key);
             }
 
+            byte[] binaryBuffer;
+            using (var ms = new MemoryStream())
+            {
+                ms.Write(aes.IV, 0, aes.IV.Length);
+                using (var bw = new BinaryWriter(ms))
+                {
+                    WriteBinaryData(bw, (int)ms.Position);
+                    ms.Seek(0, SeekOrigin.Begin);
+                    binaryBuffer = ms.ToArray();
+                }
+            }
             var encryptor = aes.CreateEncryptor(transformedKey, aes.IV);
             using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
             {
-                //Write the IV to the file unencrypted
-                fs.Write(aes.IV, 0, aes.IV.Length);
-                var startPosition = (int)fs.Position;
+             
                 using (var cs = new CryptoStream(fs, encryptor, CryptoStreamMode.Write))
                 {
-                    WriteBinaryFile(cs, startPosition);
+                    using(var bw = new BinaryWriter(cs))
+                    {
+                        bw.Write(binaryBuffer);
+                        bw.Flush();
+                        cs.Flush();
+                    }
+                    success = true;
                 }
             }
         }
 
-        return false;
+        return success;
     }
 
-    private void WriteBinaryFile(Stream cs, int startPosition)
+    private void WriteBinaryData(BinaryWriter bw, int startPosition = 0)
     {
         //Binary Writer inherently knows the size of the type and will write the expected
         //number of bytes to the stream
-        using (var bw = new BinaryWriter(cs))
+
+        var resourceKeys = new Dictionary<string, int>();
+        var resourceFileSize = 0;
+        bw.Write(resourceFileSize);
+        var mapSize = FileMap.Count;
+        bw.Write(mapSize);
+
+        //Write the File Map
+        foreach (var resource in FileMap)
         {
-            var resourceKeys = new Dictionary<string, int>();
-            var resourceFileSize = 0;
-            bw.Write(resourceFileSize);
-            var mapSize = FileMap.Count;
-            bw.Write(mapSize);
-
-            //Write the File Map
-            foreach (var resource in FileMap)
-            {
-                //C# binary writer prefixes string with their length
-                bw.Write(resource.Key);
-                bw.Write(resource.Value.ResourceSize);
-                //store start position of resource offset so that we can repopulate
-                //the offset with the start position of the actual file data
-                resourceKeys.Add(resource.Key, (int)bw.BaseStream.Position);
-                bw.Write(resource.Value.ResourceOffset);
-                bw.Flush();
-            }
-
-            //Write the File Data to the resource file
-            var position = bw.BaseStream.Position;
-            var keys = FileMap.Keys.ToList();
-            foreach (var resource in keys)
-            {
-                var resourceFile = FileMap[resource];
-                resourceFile.ResourceOffset = (int)position;
-
-                //TODO: replace with streaming file read in case the file is too large to fit in memory
-                var fileBytes = File.ReadAllBytes(resource);
-                bw.Write(fileBytes);
-                position = bw.BaseStream.Position;
-                bw.Flush();
-            }
-
-
-            //Exclude IV from the total size of the resource file?
-            resourceFileSize = (int)bw.BaseStream.Length - startPosition;
-            bw.Seek(startPosition, SeekOrigin.Begin);
-            bw.Write(resourceFileSize);
+            //C# binary writer prefixes string with their length
+            bw.Write(resource.Key);
+            bw.Write(resource.Value.ResourceSize);
+            //store start position of resource offset so that we can repopulate
+            //the offset with the start position of the actual file data
+            resourceKeys.Add(resource.Key, (int)bw.BaseStream.Position + startPosition);
+            bw.Write(resource.Value.ResourceOffset);
             bw.Flush();
-
-            //Update resource file offsets
-            foreach (var resource in FileMap)
-            {
-                var offsetPosition = resourceKeys[resource.Key];
-                bw.Seek(offsetPosition, SeekOrigin.Begin);
-                bw.Write(resource.Value.ResourceOffset);
-                bw.Flush();
-            }
         }
+
+        //Write the File Data to the resource file
+        var position = bw.BaseStream.Position + startPosition;
+        var keys = FileMap.Keys.ToList();
+        foreach (var resource in keys)
+        {
+            var resourceFile = FileMap[resource];
+            resourceFile.ResourceOffset = (int)position;
+            FileMap[resource] = resourceFile;
+
+            //TODO: replace with streaming file read in case the file is too large to fit in memory
+            var fileBytes = File.ReadAllBytes(resource);
+            bw.Write(fileBytes);
+            position = bw.BaseStream.Position + startPosition;
+            bw.Flush();
+        }
+
+
+        //Exclude IV from the total size of the resource file?
+        resourceFileSize = (int)bw.BaseStream.Length;
+        
+        //Update the resource file size from 0 to the current length
+        bw.Seek(startPosition, SeekOrigin.Begin);
+        bw.Write(resourceFileSize);
+        bw.Flush();
+
+        //Update resource file offsets at the positions we recorded in the resourceKeys dictionary,
+        //with the updated offsets stored in the FileMap 
+        foreach (var resource in FileMap)
+        {
+            var offsetPosition = resourceKeys[resource.Key];
+            bw.Seek(offsetPosition, SeekOrigin.Begin);
+            bw.Write(resource.Value.ResourceOffset);
+            bw.Flush();
+        }
+        
     }
 
     private bool SaveResourcePack(string filePath)
     {
         using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
         {
-            var startPosition = (int)fs.Position;
-            WriteBinaryFile(fs, startPosition);
+            using (var bw = new BinaryWriter(fs))
+            {
+                var startPosition = (int)fs.Position;
+                WriteBinaryData(bw, startPosition);
+            }
+
         }
         return true;
     }
