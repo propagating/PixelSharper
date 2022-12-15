@@ -64,8 +64,27 @@ namespace PixelSharper.Core
                 resources.AddFileToPack(file.FullName);
             }
 
-            resources.SaveResourcePack("C:\\Users\\Ryan\\Desktop\\testpack.txt", true);
+            resources.SaveResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_raw.txt", false);   
+            resources.LoadResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_raw.txt", false);
+            
+            
+            foreach (var file in resources.FileMap)
+            {
+                Console.WriteLine(file.Key);
+                var buffer = resources.GetFileBuffer(file.Key);
+                Console.WriteLine(buffer.Buffer.Length);
 
+                var fileInfo = new FileInfo(file.Key);
+                using (var fs = new FileStream($"C:\\Users\\Ryan\\Desktop\\{fileInfo.Name}", FileMode.OpenOrCreate))
+                {
+                    fs.Write(buffer.Buffer, 0, buffer.Buffer.Length);
+                }
+                
+                Console.WriteLine("wrote file to disk");
+                
+            }
+            
+            Console.Read();
         }
     }
     
