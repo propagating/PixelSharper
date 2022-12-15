@@ -3,10 +3,11 @@ namespace PixelSharper.Core.Resources;
 public struct ResourceBuffer
 {
     public byte[] Buffer { get; set; }
-    public ResourceBuffer(Stream fileStream, int dataOffset, int dataSize)
+    public ResourceBuffer(Stream memStream, int dataOffset, int dataSize)
     {
         Buffer = new byte[dataSize];
-        fileStream.ReadExactly(Buffer, dataOffset, dataSize);
+        memStream.Seek(dataOffset, SeekOrigin.Begin);
+        memStream.ReadExactly(Buffer, 0, dataSize);
     }
     
 }

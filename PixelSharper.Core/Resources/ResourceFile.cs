@@ -13,6 +13,6 @@ public struct ResourceFile
      public ResourceFile(int size, int resourceOffset) : this()
      {
           ResourceSize = size;
-          ResourceOffset = 0;
+          ResourceOffset = resourceOffset;
      }
 }
