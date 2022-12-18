@@ -20,7 +20,7 @@ public struct Pixel : IEquatable<Pixel>
         DisplayMode = PixelDisplayMode.Normal;
     }
 
-    public Pixel(float r, float g, float b, float a = 1.0f) : this()
+    public Pixel(float r, float g, float b, float a) : this()
     {
         Red = (byte)(r * 255.0f);
         Green = (byte)(g * 255.0f);
