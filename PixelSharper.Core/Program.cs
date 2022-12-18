@@ -64,8 +64,8 @@ namespace PixelSharper.Core
                 resources.AddFileToPack(file.FullName);
             }
 
-            resources.SaveResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_raw.txt", false);   
-            resources.LoadResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_raw.txt", false);
+            resources.SaveResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_encrypted.txt", true, "this is a test key");   
+            resources.LoadResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_unencrypted.txt", true, "this is a test key");
             
             
             foreach (var file in resources.FileMap)

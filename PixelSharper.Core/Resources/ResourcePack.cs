@@ -5,7 +5,6 @@ namespace PixelSharper.Core.Resources;
 public class ResourcePack
 {
     public Dictionary<string, ResourceFile> FileMap { get; set; }
-    private byte[] Buffer { get; set; }
     private Stream? ResourceStream { get; set; }
 
     private static readonly byte[] Salt =
@@ -76,29 +75,32 @@ public class ResourcePack
 
                 using (var cs = new CryptoStream(fs, aes.CreateDecryptor(transformedKey, iv), CryptoStreamMode.Read))
                 {
-
-                    using (var br = new BinaryReader(cs))
-                    {
-                        var fileSize = br.ReadInt32();
-                        var mapSize = br.ReadInt32();
-                        for (var i = 0; i < mapSize; i++)
-                        {
-                            var resourceName = br.ReadString();
-                            var resourceSize = br.ReadInt32();
-                            var resourceOffset = br.ReadInt32();
-
-                            FileMap[resourceName] = new ResourceFile(resourceSize, resourceOffset);
-                        }
-                        
-
-                    }
+                    binaryBuffer = new byte[(int)fs.Length];
+                    cs.Read(binaryBuffer, 0, (int)fs.Length);
                 }
-
-
             }
         }
-        
-        return false;
+
+        ResourceStream = new MemoryStream(binaryBuffer);
+        ReadBinaryData();
+
+        return Loaded();
+    }
+
+    private void ReadBinaryData()
+    {
+        var br = new BinaryReader(ResourceStream);
+
+        var fileSize = br.ReadInt32();
+        var mapSize = br.ReadInt32();
+        for (var i = 0; i < mapSize; i++)
+        {
+            var resourceName = br.ReadString();
+            var resourceSize = br.ReadInt32();
+            var resourceOffset = br.ReadInt32();
+
+            FileMap[resourceName] = new ResourceFile(resourceSize, resourceOffset);
+        }
     }
 
     /// <summary>
@@ -113,28 +115,16 @@ public class ResourcePack
             return false;
         }
 
-        using (var fs = new FileStream(filePath, FileMode.Open))
+        var options = new FileStreamOptions
         {
-            using (var br = new BinaryReader(fs))
-            {
-                var fileSize = br.ReadInt32();
-                var mapSize = br.ReadInt32();
-                for (var i = 0; i < mapSize; i++)
-                {
-                    var resourceName = br.ReadString();
-                    var resourceSize = br.ReadInt32();
-                    var resourceOffset = br.ReadInt32();
-
-                    FileMap[resourceName] = new ResourceFile(resourceSize, resourceOffset);
-                }
-                
-                br.BaseStream.Seek(0, SeekOrigin.Begin);
-                ResourceStream = new MemoryStream(br.ReadBytes((int)fs.Length), false);
-            }
-        }
-
-
-
+            Mode = FileMode.Open,
+            Access = FileAccess.Read,
+            Options = FileOptions.RandomAccess,
+            Share = FileShare.Read,
+        };
+        
+        ResourceStream = new FileStream(filePath, options);
+        ReadBinaryData();
         return Loaded();
     }
 
@@ -176,11 +166,13 @@ public class ResourcePack
                 ms.Write(aes.IV, 0, aes.IV.Length);
                 using (var bw = new BinaryWriter(ms))
                 {
-                    WriteBinaryData(bw, (int)ms.Position);
+                    var startPosition = aes.IV.Length;
+                    WriteBinaryData(bw, startPosition);
                     ms.Seek(0, SeekOrigin.Begin);
                     binaryBuffer = ms.ToArray();
                 }
             }
+            
             var encryptor = aes.CreateEncryptor(transformedKey, aes.IV);
             using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
             {
@@ -220,24 +212,24 @@ public class ResourcePack
             bw.Write(resource.Value.ResourceSize);
             //store start position of resource offset so that we can repopulate
             //the offset with the start position of the actual file data
-            resourceKeys.Add(resource.Key, (int)bw.BaseStream.Position + startPosition);
+            resourceKeys.Add(resource.Key, (int)bw.BaseStream.Position);
             bw.Write(resource.Value.ResourceOffset);
             bw.Flush();
         }
 
         //Write the File Data to the resource file
-        var position = bw.BaseStream.Position + startPosition;
+        var position = bw.BaseStream.Position;
         var keys = FileMap.Keys.ToList();
         foreach (var resource in keys)
         {
             var resourceFile = FileMap[resource];
-            resourceFile.ResourceOffset = (int)position;
+            resourceFile.ResourceOffset = (int)position - startPosition;
             FileMap[resource] = resourceFile;
 
             //TODO: replace with streaming file read in case the file is too large to fit in memory
             var fileBytes = File.ReadAllBytes(resource);
             bw.Write(fileBytes);
-            position = bw.BaseStream.Position + startPosition;
+            position = bw.BaseStream.Position;
             bw.Flush();
         }
 
@@ -298,7 +290,7 @@ public class ResourcePack
 
     private static byte[] TransformKey(string password, int keyBytes = 32)
     {
-        const int iterations = 3000;
+        const int iterations = 3072;
         var keyGenerator = new Rfc2898DeriveBytes(password, Salt,
                                                   iterations, HashAlgorithmName.SHA512);
         return keyGenerator.GetBytes(keyBytes);
