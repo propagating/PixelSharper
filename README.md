@@ -6,7 +6,7 @@ This project is the core focus of the Youtube series 'Two's Complement' created 
 
 Upon completion, PixelSharper will be used as a backbone for a NES emulator called NESharp (it's written in C#, so sharp must be in the name). That project will similarly based on Javidx9's NES Emultaor series.
 
-### Two's Complement Playlist
+### [Two's Complement] Playlist(https://www.youtube.com/watch?v=53C0BQPMVwk&list=PLjAcolkdvU6X1i9hFSUAkohmuvqD-urYL)
 
 
 https://www.youtube.com/watch?v=53C0BQPMVwk&list=PLjAcolkdvU6X1i9hFSUAkohmuvqD-urYL
