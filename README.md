@@ -13,7 +13,9 @@ https://www.youtube.com/watch?v=53C0BQPMVwk&list=PLjAcolkdvU6X1i9hFSUAkohmuvqD-u
 
 
 
-## Javidx9's Media:
+## [Javidx9's Media](https://github.com/OneLoneCoder/olcPixelGameEngine):
+
+A huge thank you for the permission to use the olcPGE code for this project and the accompanying series.
 
 olcPGE Github: https://github.com/OneLoneCoder/olcPixelGameEngine
 
