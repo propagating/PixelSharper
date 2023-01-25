@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
-
-namespace PixelSharper.Core.Resources;
+using PixelSharper.Core.Enums;
+using PixelSharper.Core.Resources;
 
 public class ResourcePack
 {
@@ -12,7 +12,7 @@ public class ResourcePack
 
     public ResourcePack()
     {
-        ResourceStream = null;
+        ResourceStream = new MemoryStream();
         FileMap = new Dictionary<string, ResourceFile>();
     }
 
@@ -29,30 +29,46 @@ public class ResourcePack
         return false;
     }
 
-
-    /// <summary>
-    /// Loads an encrypted ResourceFile from disk and populates the file stream
-    /// </summary>
-    /// <param name="filePath"></param>
-    /// <param name="isEncrypted"></param>
-    /// <param name="key"></param>
-    /// <returns></returns>
-    public bool LoadResourcePack(string filePath, bool isEncrypted = false, bool isScrambled = false, string key = "")
+    public bool LoadResourcePack(string filePath, ResourcePackProtectionMode protectionMode, string key = "")
     {
-        if (!isEncrypted)
-        {
-            return LoadResourcePack(filePath);
-        }
 
-        if (string.IsNullOrWhiteSpace(key))
+        if (!File.Exists(filePath))
         {
             return false;
+            
         }
-
-        LoadEncryptedResources(filePath, key);
+        switch (protectionMode)
+        {
+            case ResourcePackProtectionMode.None:
+                LoadPlainResources(filePath);
+                break;
+            case ResourcePackProtectionMode.Encrypted:
+                if (string.IsNullOrWhiteSpace(key)) return false;
+                LoadEncryptedResources(filePath, key);
+                break;
+            case ResourcePackProtectionMode.Scrambled:
+                if (string.IsNullOrWhiteSpace(key)) return false;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(protectionMode), protectionMode, null);
+        }
+        
         ReadBinaryData();
-
         return Loaded();
+    }
+    
+    private void LoadPlainResources(string filePath)
+    {
+
+        var options = new FileStreamOptions
+        {
+            Mode = FileMode.Open,
+            Access = FileAccess.Read,
+            Options = FileOptions.RandomAccess,
+            Share = FileShare.Read,
+        };
+        
+        ResourceStream = new FileStream(filePath, options);
     }
 
     private void LoadEncryptedResources(string filePath, string key)
@@ -82,6 +98,9 @@ public class ResourcePack
                 using (var cs = new CryptoStream(fs, aes.CreateDecryptor(transformedKey, iv), CryptoStreamMode.Read))
                 {
                     binaryBuffer = new byte[(int)fs.Length];
+                    
+                    //Read returns the number of bytes read and can be used to validate
+                    //that we actually read the entire file into our buffer
                     cs.Read(binaryBuffer, 0, (int)fs.Length);
                 }
             }
@@ -94,6 +113,7 @@ public class ResourcePack
     {
         var br = new BinaryReader(ResourceStream);
 
+        //reads file size, not currently used, but we still need to read past these bytes regardless of use.
         var fileSize = br.ReadInt32();
         var mapSize = br.ReadInt32();
         for (var i = 0; i < mapSize; i++)
@@ -106,62 +126,46 @@ public class ResourcePack
         }
     }
 
-    /// <summary>
-    /// Loads an unencrypted ResourceFile and FileMap from disk
-    /// </summary>
-    /// <param name="filePath"></param>
-    /// <returns></returns>
-    private bool LoadResourcePack(string filePath)
+    public bool SaveResourcePack(string filePath, ResourcePackProtectionMode protectionMode, string key = "")
     {
-        if (!File.Exists(filePath))
+        switch (protectionMode)
         {
-            return false;
-        }
+            case ResourcePackProtectionMode.None:
+                return SavePlainResourcePack(filePath);
+            case ResourcePackProtectionMode.Encrypted:
+                if (string.IsNullOrWhiteSpace(key)) return false;
+                return SaveEncryptedResources(filePath, key);
+            case ResourcePackProtectionMode.Scrambled:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(protectionMode), protectionMode, null);
 
-        var options = new FileStreamOptions
-        {
-            Mode = FileMode.Open,
-            Access = FileAccess.Read,
-            Options = FileOptions.RandomAccess,
-            Share = FileShare.Read,
-        };
+        }
         
-        ResourceStream = new FileStream(filePath, options);
-        ReadBinaryData();
-        return Loaded();
+        return false;
     }
 
-    
-    /// <summary>
-    /// Saves the resource pack, either encrypted or not. If encrypted is set to true and no key is provided, a new key will be generated and saved
-    /// to the same folder as the resource file for later use. 
-    /// </summary>
-    /// <param name="filePath"></param>
-    /// <param name="encrypted"></param>
-    /// <param name="key"></param>
-    /// <returns></returns>
-    public bool SaveResourcePack(string filePath, bool encrypted = false, bool scrambled = false, string key = "")
+    private bool SavePlainResourcePack(string filePath)
     {
-        var success = false;
-        if (!encrypted)
+        using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
         {
-            return SaveResourcePack(filePath);
-        }
+            using (var bw = new BinaryWriter(fs))
+            {
+                var startPosition = (int)fs.Position;
+                WriteBinaryData(bw, startPosition);
+            }
 
+        }
+        return true;
+    }
+    private bool SaveEncryptedResources(string filePath, string key)
+    {
         using (var aes = Aes.Create())
         {
             aes.KeySize = 256;
             aes.GenerateIV();
             byte[] transformedKey;
-            
-            if (string.IsNullOrEmpty(key))
-            {
-                return false;
-            }
-            else
-            {
-                transformedKey = TransformKey(key);
-            }
+            transformedKey = TransformKey(key);
 
             byte[] binaryBuffer;
             using (var ms = new MemoryStream())
@@ -175,27 +179,24 @@ public class ResourcePack
                     binaryBuffer = ms.ToArray();
                 }
             }
-            
+
             var encryptor = aes.CreateEncryptor(transformedKey, aes.IV);
             using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
             {
-             
                 using (var cs = new CryptoStream(fs, encryptor, CryptoStreamMode.Write))
                 {
-                    using(var bw = new BinaryWriter(cs))
+                    using (var bw = new BinaryWriter(cs))
                     {
                         bw.Write(binaryBuffer);
                         bw.Flush();
                         cs.Flush();
                     }
-                    success = true;
                 }
             }
         }
 
-        return success;
+        return true;
     }
-    
 
     private void WriteBinaryData(BinaryWriter bw, int startPosition = 0)
     {
@@ -258,8 +259,7 @@ public class ResourcePack
         
     }
 
-    
-    // can be used to scramble or unscramble file data with the same key because XOR is cyclical
+    // can be used to scramble or unscramble file data with the same key because XOR is cyclical (assumes not byte corruption
     public byte[] ScrambleFile(byte[] fileData, string key)
     {
         if (string.IsNullOrEmpty(key))
@@ -279,21 +279,6 @@ public class ResourcePack
 
     }
 
-    private bool SaveResourcePack(string filePath)
-    {
-        using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
-        {
-            using (var bw = new BinaryWriter(fs))
-            {
-                var startPosition = (int)fs.Position;
-                WriteBinaryData(bw, startPosition);
-            }
-
-        }
-        return true;
-    }
-
-
     public ResourceBuffer GetFileBuffer(string filePath)
     {
         if (Loaded())
@@ -303,11 +288,6 @@ public class ResourcePack
 
         return new ResourceBuffer();
     }
-
-    /// <summary>
-    /// Ensures the ResourcePack is loaded and ready to use
-    /// </summary>
-    /// <returns></returns>
     public bool Loaded()
     {
         return ResourceStream != null && ResourceStream.CanRead;
@@ -316,10 +296,12 @@ public class ResourcePack
     private static byte[] TransformKey(string password, int keyBytes = 32)
     {
         //TODO: make this configurable
-        const int iterations = 3072;
+        const int iterations = 655360;
         var keyGenerator = new Rfc2898DeriveBytes(password, Salt,
                                                   iterations, HashAlgorithmName.SHA512);
         //KeyBytes are 32*8 = 256 bits for AES
         return keyGenerator.GetBytes(keyBytes);
     }
 }
+
+
