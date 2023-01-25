@@ -101,7 +101,7 @@ public class ResourcePack
                     
                     //Read returns the number of bytes read and can be used to validate
                     //that we actually read the entire file into our buffer
-                    cs.Read(binaryBuffer, 0, (int)fs.Length);
+                    _ = cs.Read(binaryBuffer, 0, (int)fs.Length);
                 }
             }
         }
@@ -114,7 +114,7 @@ public class ResourcePack
         var br = new BinaryReader(ResourceStream);
 
         //reads file size, not currently used, but we still need to read past these bytes regardless of use.
-        var fileSize = br.ReadInt32();
+        _ = br.ReadInt32();
         var mapSize = br.ReadInt32();
         for (var i = 0; i < mapSize; i++)
         {

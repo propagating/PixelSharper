@@ -66,7 +66,7 @@ namespace PixelSharper.Core
             }
 
             resources.SaveResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_encrypted.txt", ResourcePackProtectionMode.Encrypted, "this is a test key");   
-            resources.LoadResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_unencrypted.txt", ResourcePackProtectionMode.Encrypted, "this is a test key");
+            resources.LoadResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_encrypted.txt", ResourcePackProtectionMode.Encrypted, "this is a test key");
             
             
             foreach (var file in resources.FileMap)
