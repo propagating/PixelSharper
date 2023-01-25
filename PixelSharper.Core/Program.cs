@@ -1,4 +1,5 @@
-﻿using PixelSharper.Core.Resources;
+﻿using PixelSharper.Core.Enums;
+using PixelSharper.Core.Resources;
 
 #region license
 // License (OLC-3)
@@ -64,8 +65,8 @@ namespace PixelSharper.Core
                 resources.AddFileToPack(file.FullName);
             }
 
-            resources.SaveResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_encrypted.txt", true, "this is a test key");   
-            resources.LoadResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_unencrypted.txt", true, "this is a test key");
+            resources.SaveResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_encrypted.txt", ResourcePackProtectionMode.Encrypted, "this is a test key");   
+            resources.LoadResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_unencrypted.txt", ResourcePackProtectionMode.Encrypted, "this is a test key");
             
             
             foreach (var file in resources.FileMap)

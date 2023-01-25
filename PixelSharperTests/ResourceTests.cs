@@ -4,7 +4,6 @@ using PixelSharper.Core.Resources;
 namespace PixelSharperTests;
 
 using NUnit.Framework;
-using PixelSharper.Core.Components;
 
 public class ResourceTests
 {
