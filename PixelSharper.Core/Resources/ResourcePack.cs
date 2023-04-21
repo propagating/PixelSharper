@@ -1,11 +1,12 @@
 using System.Security.Cryptography;
 using PixelSharper.Core.Enums;
-using PixelSharper.Core.Resources;
+
+namespace PixelSharper.Core.Resources;
 
 public class ResourcePack
 {
     public Dictionary<string, ResourceFile> FileMap { get; set; }
-    private Stream? ResourceStream { get; set; }
+    private MemoryStream ResourceStream { get; set; }
 
     private static readonly byte[] Salt =
         new byte[] { 2, 3, 16, 125, 21, 232, 4, 189 };
@@ -41,10 +42,12 @@ public class ResourcePack
         {
             case ResourcePackProtectionMode.None:
                 LoadPlainResources(filePath);
+                ReadBinaryData();
                 break;
             case ResourcePackProtectionMode.Encrypted:
                 if (string.IsNullOrWhiteSpace(key)) return false;
                 LoadEncryptedResources(filePath, key);
+                ReadBinaryData();
                 break;
             case ResourcePackProtectionMode.Scrambled:
                 if (string.IsNullOrWhiteSpace(key)) return false;
@@ -53,7 +56,7 @@ public class ResourcePack
                 throw new ArgumentOutOfRangeException(nameof(protectionMode), protectionMode, null);
         }
         
-        ReadBinaryData();
+
         return Loaded();
     }
     
@@ -67,8 +70,11 @@ public class ResourcePack
             Options = FileOptions.RandomAccess,
             Share = FileShare.Read,
         };
-        
-        ResourceStream = new FileStream(filePath, options);
+        var fs = new FileStream(filePath, options);
+        var ms = new MemoryStream();
+        fs.CopyTo(ms);
+
+        ResourceStream = ms;
     }
 
     private void LoadEncryptedResources(string filePath, string key)
@@ -78,6 +84,9 @@ public class ResourcePack
         {
             using (var aes = Aes.Create())
             {
+                aes.Key = TransformKey(key);
+                aes.Padding = PaddingMode.ISO10126;
+                aes.Mode = CipherMode.CBC;
                 var iv = new byte[aes.IV.Length];
                 var numBytesToRead = aes.IV.Length;
                 var currentByte = 0;
@@ -90,18 +99,16 @@ public class ResourcePack
                     currentByte += n;
                     numBytesToRead -= n;
                 }
-            
-            
-                byte[] transformedKey;
-                transformedKey = TransformKey(key);
 
-                using (var cs = new CryptoStream(fs, aes.CreateDecryptor(transformedKey, iv), CryptoStreamMode.Read))
+                aes.IV = iv;
+
+                using (var cs = new CryptoStream(fs, aes.CreateDecryptor(aes.Key, aes.IV), CryptoStreamMode.Read))
                 {
                     binaryBuffer = new byte[(int)fs.Length];
                     
                     //Read returns the number of bytes read and can be used to validate
                     //that we actually read the entire file into our buffer
-                    _ = cs.Read(binaryBuffer, 0, (int)fs.Length);
+                    var bytesRead  = cs.Read(binaryBuffer, 0, (int)fs.Length);
                 }
             }
         }
@@ -112,9 +119,8 @@ public class ResourcePack
     private void ReadBinaryData()
     {
         var br = new BinaryReader(ResourceStream);
-
         //reads file size, not currently used, but we still need to read past these bytes regardless of use.
-        _ = br.ReadInt32();
+        var fileSize = br.ReadInt32();
         var mapSize = br.ReadInt32();
         for (var i = 0; i < mapSize; i++)
         {
@@ -128,14 +134,17 @@ public class ResourcePack
 
     public bool SaveResourcePack(string filePath, ResourcePackProtectionMode protectionMode, string key = "")
     {
+
         switch (protectionMode)
         {
             case ResourcePackProtectionMode.None:
                 return SavePlainResourcePack(filePath);
             case ResourcePackProtectionMode.Encrypted:
                 if (string.IsNullOrWhiteSpace(key)) return false;
+                if (File.Exists(filePath))File.Delete(filePath);
                 return SaveEncryptedResources(filePath, key);
             case ResourcePackProtectionMode.Scrambled:
+                if (string.IsNullOrWhiteSpace(key)) return false;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(protectionMode), protectionMode, null);
@@ -151,8 +160,7 @@ public class ResourcePack
         {
             using (var bw = new BinaryWriter(fs))
             {
-                var startPosition = (int)fs.Position;
-                WriteBinaryData(bw, startPosition);
+                WriteBinaryData(bw);
             }
 
         }
@@ -160,36 +168,38 @@ public class ResourcePack
     }
     private bool SaveEncryptedResources(string filePath, string key)
     {
+
         using (var aes = Aes.Create())
         {
-            aes.KeySize = 256;
+            aes.Key = TransformKey(key);
+            aes.Padding = PaddingMode.ISO10126;
+            aes.Mode = CipherMode.CBC;
             aes.GenerateIV();
-            byte[] transformedKey;
-            transformedKey = TransformKey(key);
 
             byte[] binaryBuffer;
             using (var ms = new MemoryStream())
             {
-                ms.Write(aes.IV, 0, aes.IV.Length);
                 using (var bw = new BinaryWriter(ms))
                 {
                     var startPosition = aes.IV.Length;
-                    WriteBinaryData(bw, startPosition);
+                    WriteBinaryData(bw);
                     ms.Seek(0, SeekOrigin.Begin);
                     binaryBuffer = ms.ToArray();
                 }
             }
 
-            var encryptor = aes.CreateEncryptor(transformedKey, aes.IV);
+            var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+            
             using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
             {
+                fs.Write(aes.IV, 0, aes.IV.Length);
                 using (var cs = new CryptoStream(fs, encryptor, CryptoStreamMode.Write))
                 {
                     using (var bw = new BinaryWriter(cs))
                     {
                         bw.Write(binaryBuffer);
                         bw.Flush();
-                        cs.Flush();
+                        cs.FlushFinalBlock();
                     }
                 }
             }
@@ -198,7 +208,7 @@ public class ResourcePack
         return true;
     }
 
-    private void WriteBinaryData(BinaryWriter bw, int startPosition = 0)
+    private void WriteBinaryData(BinaryWriter bw)
     {
         //Binary Writer inherently knows the size of the type and will write the expected
         //number of bytes to the stream
@@ -228,7 +238,8 @@ public class ResourcePack
         foreach (var resource in keys)
         {
             var resourceFile = FileMap[resource];
-            resourceFile.ResourceOffset = (int)position - startPosition;
+            //With how the IV is written and read we no longer need to worry about the start position 
+            resourceFile.ResourceOffset = (int)position;
             FileMap[resource] = resourceFile;
 
             //TODO: replace with streaming file read in case the file is too large to fit in memory
@@ -243,7 +254,7 @@ public class ResourcePack
         resourceFileSize = (int)bw.BaseStream.Length;
         
         //Update the resource file size from 0 to the current length
-        bw.Seek(startPosition, SeekOrigin.Begin);
+        bw.Seek(0, SeekOrigin.Begin);
         bw.Write(resourceFileSize);
         bw.Flush();
 
@@ -290,7 +301,7 @@ public class ResourcePack
     }
     public bool Loaded()
     {
-        return ResourceStream != null && ResourceStream.CanRead;
+        return ResourceStream.CanRead;
     }
 
     private static byte[] TransformKey(string password, int keyBytes = 32)
@@ -303,5 +314,3 @@ public class ResourcePack
         return keyGenerator.GetBytes(keyBytes);
     }
 }
-
-

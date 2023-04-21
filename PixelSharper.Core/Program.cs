@@ -25,7 +25,7 @@ using PixelSharper.Core.Resources;
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
 // OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
 //     SHALL THE COPYRIGHT	HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-//                                                                  INCIDENTAL,	SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+//      INCIDENTAL,	SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
 //     TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
 //     BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 //     CONTRACT, STRICT LIABILITY, OR TORT	(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
@@ -34,7 +34,7 @@ using PixelSharper.Core.Resources;
 //
 //     Links
 // ~~~~~
-//     YouTube:	https://www.youtube.com/javidx9
+// YouTube:	https://www.youtube.com/javidx9
 // https://www.youtube.com/javidx9extra
 // Discord:	https://discord.gg/WhwHUMV
 // Twitter:	https://www.twitter.com/javidx9
@@ -84,6 +84,9 @@ namespace PixelSharper.Core
                 Console.WriteLine("wrote file to disk");
                 
             }
+            
+            resources.SaveResourcePack("C:\\Users\\Ryan\\Desktop\\testpack_unencrypted.txt", ResourcePackProtectionMode.None, "this is a test key");
+
             
             Console.Read();
         }
