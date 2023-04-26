@@ -1,5 +1,8 @@
-﻿using PixelSharper.Core.Enums;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
+using PixelSharper.Core.Enums;
 using PixelSharper.Core.Resources;
+using PixelSharper.Core.Types;
 
 #region license
 // License (OLC-3)
@@ -110,5 +113,6 @@ namespace PixelSharper.Core
             return true;
         }
     }
+    
 }
 

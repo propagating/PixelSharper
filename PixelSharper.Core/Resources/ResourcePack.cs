@@ -87,6 +87,7 @@ public class ResourcePack
                 aes.Key = TransformKey(key);
                 aes.Padding = PaddingMode.ISO10126;
                 aes.Mode = CipherMode.CBC;
+                
                 var iv = new byte[aes.IV.Length];
                 var numBytesToRead = aes.IV.Length;
                 var currentByte = 0;
@@ -101,8 +102,9 @@ public class ResourcePack
                 }
 
                 aes.IV = iv;
+                var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
 
-                using (var cs = new CryptoStream(fs, aes.CreateDecryptor(aes.Key, aes.IV), CryptoStreamMode.Read))
+                using (var cs = new CryptoStream(fs, decryptor, CryptoStreamMode.Read))
                 {
                     binaryBuffer = new byte[(int)fs.Length];
                     
@@ -181,7 +183,6 @@ public class ResourcePack
             {
                 using (var bw = new BinaryWriter(ms))
                 {
-                    var startPosition = aes.IV.Length;
                     WriteBinaryData(bw);
                     ms.Seek(0, SeekOrigin.Begin);
                     binaryBuffer = ms.ToArray();
@@ -302,6 +303,11 @@ public class ResourcePack
     public bool Loaded()
     {
         return ResourceStream.CanRead;
+    }
+    
+    public string MakePosixPath(string path)
+    {
+        return path.Replace("\\", "/");
     }
 
     private static byte[] TransformKey(string password, int keyBytes = 32)
