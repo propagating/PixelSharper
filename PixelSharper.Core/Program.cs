@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Globalization;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using PixelSharper.Core.Enums;
 using PixelSharper.Core.Resources;
