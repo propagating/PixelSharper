@@ -8,4 +8,8 @@
         <LangVersion>11</LangVersion>
     </PropertyGroup>
 
+    <ItemGroup>
+      <Folder Include="Extensions\" />
+    </ItemGroup>
+
 </Project>
