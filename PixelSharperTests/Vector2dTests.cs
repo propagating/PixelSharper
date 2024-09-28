@@ -1,10 +1,9 @@
 ﻿using System;
 using System.IO;
 using PixelSharper.Core.Types;
-
 namespace PixelSharperTests;
-
 using NUnit.Framework;
+
 [TestFixture]
 public class Vector2dTests
 {

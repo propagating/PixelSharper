@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace PixelSharper.Core.Types;
 
-public struct Vector2d<T> where T : struct, INumber<T>
+public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
 {
     public T X { get; set; }
     public T Y { get; set; }
@@ -206,12 +206,12 @@ public struct Vector2d<T> where T : struct, INumber<T>
         return a + (b - a) * tx;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Vector2d<T> Reflect(Vector2d<T> normal)
-    {
-        normal = normal.Normalize();
-        return this - normal * (T.CreateChecked(2) * this.DotProduct<T, T>(normal));
-    }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Vector2d<T> Reflect(Vector2d<T> normal)
+        {
+            normal = normal.Normalize();
+            return this - normal * (T.CreateChecked(2) * this.DotProduct<T, T>(normal));
+        }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private double MagnitudeAsDouble()
@@ -237,4 +237,9 @@ public struct Vector2d<T> where T : struct, INumber<T>
     }
 
     public override int GetHashCode() => (X, Y).GetHashCode();
+
+    public bool Equals(Vector2d<T> other)
+    {
+        return X.Equals(other.X) && Y.Equals(other.Y);
+    }
 }
