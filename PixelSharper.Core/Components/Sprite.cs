@@ -30,9 +30,16 @@ public class Sprite
         SetSize(width, height);
     }
     
-    private Sprite(Sprite other)
+    public Sprite(Sprite other)
     {
-        throw new InvalidOperationException("Copy constructor is not allowed.");
+        if (other == null)
+            throw new ArgumentNullException(nameof(other));
+
+        Width = other.Width;
+        Height = other.Height;
+        SpriteDisplayMode = other.SpriteDisplayMode;
+        SpriteMirrorMode = other.SpriteMirrorMode;
+        PixelData = new List<Pixel>(other.PixelData);
     }
 
     ~Sprite()
@@ -101,8 +108,8 @@ public class Sprite
     {
         u = u * Width - 0.5f;
         v = v * Height - 0.5f;
-        var x = (int)Math.Floor(u); // cast to int rounds toward zero, not downward
-        var y = (int)Math.Floor(v); // Thanks @joshinils
+        var x = (int)Math.Floor(u); 
+        var y = (int)Math.Floor(v); 
         var uRatio = u - x;
         var vRatio = v - y;
         var uOpposite = 1 - uRatio;
@@ -165,7 +172,31 @@ public class Sprite
         Width = w;
         Height = h;
     }
-
     
+    public SpritePatch ToSpritePatch()
+    {
+        return Patch(new Vector2d<int>(0, 0), Size());
+    }
+    
+    public SpritePatch Patch(Vector2d<int> pos, Vector2d<int> size)
+    {
+        var patch = new SpritePatch(this);
+        var spriteSize = Size();
+        patch.Coords[0] = new Vector2d<float>(pos.X, pos.Y + size.Y) / spriteSize;
+        patch.Coords[1] = new Vector2d<float>(pos.X, pos.Y) / spriteSize;
+        patch.Coords[2] = new Vector2d<float>(pos.X + size.X, pos.Y) / spriteSize;
+        patch.Coords[3] = new Vector2d<float>(pos.X + size.X, pos.Y + size.Y) / spriteSize;
+        return patch;
+    }
+    
+    public SpritePatch Patch(Vector2d<float> pBL, Vector2d<float> pTL, Vector2d<float> pTR, Vector2d<float> pBR)
+    {
+        var patch = new SpritePatch(this);
+        patch.Coords[0] = pBL;
+        patch.Coords[1] = pTL;
+        patch.Coords[2] = pTR;
+        patch.Coords[3] = pBR;
+        return patch;
+    }
 
 }

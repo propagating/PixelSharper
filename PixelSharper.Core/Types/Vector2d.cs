@@ -18,6 +18,7 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
         Y = y;
     }
 
+    #region validation
     private static bool IsValidNumeric<U>(U value) where U : struct, INumber<U>
     {
         try
@@ -30,12 +31,21 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
             return false;
         }
     }
+
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsPositive(T value) => value > T.Zero;
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsPositive(T value)
+    private static bool IsZero(T value)
     {
-        return value > T.Zero;
+        var result = value == T.Zero;
+        return result;
     }
+
+    #endregion
+    
+    #region operators
 
     // Arithmetic operations
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -49,10 +59,58 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> operator *(T scalar, Vector2d<T> a) => new Vector2d<T>(a.X * scalar, a.Y * scalar);
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator *(Vector2d<T> a, float scalar)
+    {
+        T tScalar = T.CreateChecked(scalar);
+        return new Vector2d<T>(a.X * tScalar, a.Y * tScalar);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator *(float scalar, Vector2d<T> a)
+    {
+        T tScalar = T.CreateChecked(scalar);
+        return new Vector2d<T>(a.X * tScalar, a.Y * tScalar);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator *(Vector2d<T> a, double scalar)
+    {
+        T tScalar = T.CreateChecked(scalar);
+        return new Vector2d<T>(a.X * tScalar, a.Y * tScalar);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator *(double scalar, Vector2d<T> a)
+    {
+        T tScalar = T.CreateChecked(scalar);
+        return new Vector2d<T>(a.X * tScalar, a.Y * tScalar);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> operator /(Vector2d<T> a, T scalar) => new Vector2d<T>(a.X / scalar, a.Y / scalar);
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator /(Vector2d<T> a, int scalar) => new Vector2d<T>(a.X / T.CreateChecked(scalar), a.Y / T.CreateChecked(scalar));
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator /(Vector2d<T> a, float scalar) => new Vector2d<T>(a.X / T.CreateChecked(scalar), a.Y / T.CreateChecked(scalar));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator /(Vector2d<T> a, double scalar) => new Vector2d<T>(a.X / T.CreateChecked(scalar), a.Y / T.CreateChecked(scalar));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator /(Vector2d<T> a, Vector2d<T> b) => new Vector2d<T>(a.X / b.X, a.Y / b.Y);
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator /(Vector2d<T> a, Vector2d<int> b) => new Vector2d<T>(a.X /T.CreateChecked(b.X),  T.CreateChecked(b.Y));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator /(Vector2d<T> a, Vector2d<float> b) => new Vector2d<T>(a.X / T.CreateChecked(b.X),  T.CreateChecked(b.Y));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2d<T> operator /(Vector2d<T> a, Vector2d<double> b) => new Vector2d<T>(a.X / T.CreateChecked(b.X),  T.CreateChecked(b.Y));
     // Comparison operations
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator >(Vector2d<T> a, Vector2d<T> b) => a.X > b.X && a.Y > b.Y;
@@ -83,7 +141,9 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ^(Vector2d<T> a, Vector2d<T> b) =>
         (a.X != T.Zero && a.Y != T.Zero) ^ (b.X != T.Zero && b.Y != T.Zero);
-
+    #endregion
+    
+    #region vector manipulation
     // Other methods
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TResult DotProduct<T2, TResult>(Vector2d<T2> other)
@@ -114,16 +174,13 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     {
         var length = Magnitude();
 
-        if (!IsPositive(length))
-            throw new InvalidOperationException("Cannot normalize a vector with length zero.");
-
-        return new Vector2d<T>(X / length, Y / length);
+        return IsZero(length) ? throw new InvalidOperationException("Cannot normalize a vector with length zero.") : new Vector2d<T>(X / length, Y / length);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Magnitude()
     {
-        return T.CreateChecked(Math.Sqrt(MagnitudeAsDouble()));
+        return T.CreateChecked(MagnitudeAsDouble());
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -200,25 +257,66 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> Lerp(Vector2d<T> a, Vector2d<T> b, float t)
+    public static Vector2d<T> Lerp(Vector2d<T> a, Vector2d<T> b, float t, bool forceInteger = false)
     {
-        T tx = (T)Convert.ChangeType(t, typeof(T));
-        return a + (b - a) * tx;
+        if(forceInteger) return a + (b - a) * t; 
+        bool isNotFloatingPoint = !typeof(T).IsAssignableTo(typeof(IFloatingPointIeee754<float>)) && !typeof(T).IsAssignableTo(typeof(IFloatingPointIeee754<double>));
+        if (isNotFloatingPoint) throw new InvalidOperationException("Lerp with integer types may lose precision. Set forceInteger = true to allow.");
+        return a + (b - a) * t; 
     }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Vector2d<T> Reflect(Vector2d<T> normal)
-        {
-            normal = normal.Normalize();
-            return this - normal * (T.CreateChecked(2) * this.DotProduct<T, T>(normal));
-        }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Vector2d<T> Reflect(Vector2d<T> normal)
+    {
+        normal = normal.Normalize();
+        return this - normal * (T.CreateChecked(2) * this.DotProduct<T, T>(normal));
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private double MagnitudeAsDouble()
     {
-        return Convert.ToDouble(X) * Convert.ToDouble(X) + Convert.ToDouble(Y) * Convert.ToDouble(Y);
+        return Math.Sqrt(Convert.ToDouble(X) * Convert.ToDouble(X) + Convert.ToDouble(Y) * Convert.ToDouble(Y));
     }
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double AngleBetween(Vector2d<T> a, Vector2d<T> b)
+    {
+        double dot = a.DotProduct<T, double>(b);
+        double magA = a.MagnitudeAsDouble();
+        double magB = b.MagnitudeAsDouble();
+        if (magA == 0 || magB == 0) throw new InvalidOperationException("Cannot compute angle with zero-length vector.");
+        return Math.Acos(Math.Clamp(dot / (magA * magB), -1.0, 1.0));
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double Distance(Vector2d<T> a, Vector2d<T> b)
+    {
+        //unfortunately Math.Sqrt only works with double and we cannot do this without boxing distance squared
+        return Math.Sqrt(Convert.ToDouble(DistanceSquared(a, b)));
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static T DistanceSquared(Vector2d<T> a, Vector2d<T> b)
+    {
+        T dx = a.X - b.X;
+        T dy = a.Y - b.Y;
+        return (dx * dx) + (dy * dy);
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Vector2d<T> Negate()
+    {
+        return new Vector2d<T>(-X, -Y);
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Vector2d<T> Swizzle(bool swap)
+    {
+        return swap ? new Vector2d<T>(Y, X) : new Vector2d<T>(X, Y);
+    }
+    #endregion
+    
+    #region interface methods
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static T ConvertToT(double value)
     {
@@ -242,4 +340,5 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     {
         return X.Equals(other.X) && Y.Equals(other.Y);
     }
+    #endregion
 }

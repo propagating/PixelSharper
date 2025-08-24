@@ -15,12 +15,12 @@ public class ImageLoader
 
     public virtual FileReadCode LoadImageResource(Sprite sprite, string fileName, ResourcePack resourcePack)
     {
-        
+        return FileReadCode.NO_FILE;
     }
 
     public virtual FileReadCode SaveImageResource(Sprite sprite, string fileName)
     {
-        
+        return FileReadCode.NO_FILE;
     }
     
     ~ImageLoader()
