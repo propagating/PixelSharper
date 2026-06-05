@@ -176,7 +176,7 @@ namespace PixelSharperTests
         {
             var r = Geom2D.Reflect(new Ray<float>(V(0, 5), V(1, 0)), new Line<float>(V(5, 0), V(5, 10)));
             Assert.IsTrue(r.HasValue);
-            Assert.AreEqual(5, r.Value.Origin.X, 1e-4);  // bounce point
+            Assert.AreEqual(5, r!.Value.Origin.X, 1e-4);  // bounce point
             Assert.Less(r.Value.Direction.X, 0);          // reflected back along -x
         }
     }
