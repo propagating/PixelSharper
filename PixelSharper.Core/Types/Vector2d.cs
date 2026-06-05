@@ -47,7 +47,11 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     
     #region operators
 
-    // Arithmetic operations
+    // Arithmetic operations — same-type only. Typed scalar (float/double/int) and cross-type
+    // vector overloads were removed: a typed overload is AMBIGUOUS with the generic T overload
+    // whenever T equals that type (e.g. Vector2d<float> * float), and the old cross-type vector
+    // operators silently dropped the Y component (a bug). For mixed types, convert with As<TOut>()
+    // first, e.g. `vfloat / visize.As<float>()`.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> operator +(Vector2d<T> a, Vector2d<T> b) => new Vector2d<T>(a.X + b.X, a.Y + b.Y);
 
@@ -59,58 +63,16 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> operator *(T scalar, Vector2d<T> a) => new Vector2d<T>(a.X * scalar, a.Y * scalar);
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator *(Vector2d<T> a, float scalar)
-    {
-        T tScalar = T.CreateChecked(scalar);
-        return new Vector2d<T>(a.X * tScalar, a.Y * tScalar);
-    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator *(float scalar, Vector2d<T> a)
-    {
-        T tScalar = T.CreateChecked(scalar);
-        return new Vector2d<T>(a.X * tScalar, a.Y * tScalar);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator *(Vector2d<T> a, double scalar)
-    {
-        T tScalar = T.CreateChecked(scalar);
-        return new Vector2d<T>(a.X * tScalar, a.Y * tScalar);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator *(double scalar, Vector2d<T> a)
-    {
-        T tScalar = T.CreateChecked(scalar);
-        return new Vector2d<T>(a.X * tScalar, a.Y * tScalar);
-    }
+    public static Vector2d<T> operator *(Vector2d<T> a, Vector2d<T> b) => new Vector2d<T>(a.X * b.X, a.Y * b.Y);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> operator /(Vector2d<T> a, T scalar) => new Vector2d<T>(a.X / scalar, a.Y / scalar);
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator /(Vector2d<T> a, int scalar) => new Vector2d<T>(a.X / T.CreateChecked(scalar), a.Y / T.CreateChecked(scalar));
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator /(Vector2d<T> a, float scalar) => new Vector2d<T>(a.X / T.CreateChecked(scalar), a.Y / T.CreateChecked(scalar));
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator /(Vector2d<T> a, double scalar) => new Vector2d<T>(a.X / T.CreateChecked(scalar), a.Y / T.CreateChecked(scalar));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> operator /(Vector2d<T> a, Vector2d<T> b) => new Vector2d<T>(a.X / b.X, a.Y / b.Y);
-    
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator /(Vector2d<T> a, Vector2d<int> b) => new Vector2d<T>(a.X /T.CreateChecked(b.X),  T.CreateChecked(b.Y));
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator /(Vector2d<T> a, Vector2d<float> b) => new Vector2d<T>(a.X / T.CreateChecked(b.X),  T.CreateChecked(b.Y));
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Vector2d<T> operator /(Vector2d<T> a, Vector2d<double> b) => new Vector2d<T>(a.X / T.CreateChecked(b.X),  T.CreateChecked(b.Y));
     // Comparison operations
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator >(Vector2d<T> a, Vector2d<T> b) => a.X > b.X && a.Y > b.Y;
@@ -250,19 +212,22 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2d<T> Clamp(Vector2d<T> min, Vector2d<T> max)
     {
+        // Clamp each component to [min, max] (the previous version only applied the lower bound
+        // to X and the upper bound to Y — a bug the existing test happened not to catch).
         return new Vector2d<T>(
-            T.CreateChecked(Math.Max(Convert.ToDouble(X), Convert.ToDouble(min.X))),
-            T.CreateChecked(Math.Min(Convert.ToDouble(Y), Convert.ToDouble(max.Y)))
+            T.CreateChecked(Math.Min(Math.Max(Convert.ToDouble(X), Convert.ToDouble(min.X)), Convert.ToDouble(max.X))),
+            T.CreateChecked(Math.Min(Math.Max(Convert.ToDouble(Y), Convert.ToDouble(min.Y)), Convert.ToDouble(max.Y)))
         );
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> Lerp(Vector2d<T> a, Vector2d<T> b, float t, bool forceInteger = false)
     {
-        if(forceInteger) return a + (b - a) * t; 
+        // t is converted to T (checked) — for integer T this truncates, matching the prior behaviour.
+        if(forceInteger) return a + (b - a) * T.CreateChecked(t);
         bool isNotFloatingPoint = !typeof(T).IsAssignableTo(typeof(IFloatingPointIeee754<float>)) && !typeof(T).IsAssignableTo(typeof(IFloatingPointIeee754<double>));
         if (isNotFloatingPoint) throw new InvalidOperationException("Lerp with integer types may lose precision. Set forceInteger = true to allow.");
-        return a + (b - a) * t; 
+        return a + (b - a) * T.CreateChecked(t);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -314,6 +279,12 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     {
         return swap ? new Vector2d<T>(Y, X) : new Vector2d<T>(X, Y);
     }
+
+    // Convert to a vector of another numeric type (component-wise, checked). The supported,
+    // unambiguous way to do mixed-type vector math, e.g. vfloat / visize.As<float>().
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Vector2d<TOut> As<TOut>() where TOut : struct, INumber<TOut>, IEquatable<TOut>, IComparable<TOut>
+        => new Vector2d<TOut>(TOut.CreateChecked(X), TOut.CreateChecked(Y));
     #endregion
     
     #region interface methods

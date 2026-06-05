@@ -11,6 +11,9 @@ public class Sprite
     public int Width { get; set; }
     public List<Pixel> PixelData { get; set; } = new();
     public static ImageLoader ImageLoader;
+
+    // Mirrors olc's nDefaultPixel: the value new sprite cells are initialised to (opaque black, 0xFF000000).
+    public static Pixel DefaultPixel = new(0, 0, 0, 0xFF);
     
     public SpriteDisplayMode SpriteDisplayMode = SpriteDisplayMode.Normal;
     public SpriteMirrorMode SpriteMirrorMode = SpriteMirrorMode.None;
@@ -120,10 +123,12 @@ public class Sprite
         var p3 = GetPixel(Math.Max(x, 0), Math.Min(y + 1, Height - 1));
         var p4 = GetPixel(Math.Min(x + 1, Width - 1), Math.Min(y + 1, Height - 1));
 
+        // Cast to byte (matching olc's uint8_t) so these 0-255 results bind to the byte
+        // constructor; an int here would resolve to Pixel(float,...), which re-scales by 255.
         return new Pixel(
-            (int)((p1.Red * uOpposite + p2.Red * uRatio) * vOpposite + (p3.Red * uOpposite + p4.Red * uRatio) * vRatio),
-            (int)((p1.Green * uOpposite + p2.Green * uRatio) * vOpposite + (p3.Green * uOpposite + p4.Green * uRatio) * vRatio),
-            (int)((p1.Blue * uOpposite + p2.Blue * uRatio) * vOpposite + (p3.Blue * uOpposite + p4.Blue * uRatio) * vRatio));
+            (byte)((p1.Red * uOpposite + p2.Red * uRatio) * vOpposite + (p3.Red * uOpposite + p4.Red * uRatio) * vRatio),
+            (byte)((p1.Green * uOpposite + p2.Green * uRatio) * vOpposite + (p3.Green * uOpposite + p4.Green * uRatio) * vRatio),
+            (byte)((p1.Blue * uOpposite + p2.Blue * uRatio) * vOpposite + (p3.Blue * uOpposite + p4.Blue * uRatio) * vRatio));
     }
 
     public Pixel SampleBl(Vector2d<float> position)
@@ -171,6 +176,20 @@ public class Sprite
     {
         Width = w;
         Height = h;
+
+        // Equivalent of olc's pColData.resize(width * height, nDefaultPixel): keep existing
+        // cells, append default pixels when growing, truncate when shrinking.
+        var count = Math.Max(0, w * h);
+        if (count < PixelData.Count)
+        {
+            PixelData.RemoveRange(count, PixelData.Count - count);
+        }
+        else if (count > PixelData.Count)
+        {
+            PixelData.Capacity = count;
+            for (var i = PixelData.Count; i < count; i++)
+                PixelData.Add(DefaultPixel);
+        }
     }
     
     public SpritePatch ToSpritePatch()
@@ -181,7 +200,7 @@ public class Sprite
     public SpritePatch Patch(Vector2d<int> pos, Vector2d<int> size)
     {
         var patch = new SpritePatch(this);
-        var spriteSize = Size();
+        var spriteSize = Size().As<float>();
         patch.Coords[0] = new Vector2d<float>(pos.X, pos.Y + size.Y) / spriteSize;
         patch.Coords[1] = new Vector2d<float>(pos.X, pos.Y) / spriteSize;
         patch.Coords[2] = new Vector2d<float>(pos.X + size.X, pos.Y) / spriteSize;

@@ -51,16 +51,16 @@ namespace PixelSharperTests
                 SpriteDisplayMode = SpriteDisplayMode.Periodic
             };
 
-            // Simulate some data
+            // Populate the buffer SetSize already allocated (Count == width * height).
             for (var i = 0; i < width * height; i++)
             {
-                originalSprite.PixelData.Add(new Pixel
+                originalSprite.PixelData[i] = new Pixel
                 {
                     Red = (byte)(i % 255),
                     Green = (byte)((i + 100) % 255),
                     Blue = (byte)((i + 200) % 255),
                     Alpha = (byte)((i + 50) % 255)
-                });
+                };
             }
 
             // Act
@@ -154,15 +154,15 @@ namespace PixelSharperTests
         {
             public override FileReadCode LoadImageResource(Sprite sprite, string imageFilePath, ResourcePack resourcePack)
             {
-                // Mock image loading logic
+                // Mock image loading logic: SetSize allocates the buffer, then fill it in place.
                 sprite.SetSize(10, 10);
                 for (var i = 0; i < 100; i++)
                 {
-                    sprite.PixelData.Add(new Pixel {
+                    sprite.PixelData[i] = new Pixel {
                         Red = (byte)(i % 255),
-                        Green = (byte)((i + 100) % 255), 
-                        Blue = (byte)((i + 200) % 255), 
-                        Alpha = (byte)((i + 50) % 255) });
+                        Green = (byte)((i + 100) % 255),
+                        Blue = (byte)((i + 200) % 255),
+                        Alpha = (byte)((i + 50) % 255) };
                 }
                 return FileReadCode.OK;
             }
