@@ -379,4 +379,178 @@ public static class Geom2D
         foreach (var side in sides) result.AddRange(Intersects(side, l));
         return result;
     }
+
+    // Point a distance t along a ray/line direction from an origin.
+    private static Vector2d<T> Along<T>(Vector2d<T> origin, Vector2d<T> dir, double t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => new(T.CreateChecked(Dx(origin) + Dx(dir) * t), T.CreateChecked(Dy(origin) + Dy(dir) * t));
+
+    // O--- Envelopes (bounding circle / bounding rect) ---O
+    public static Circle<T> EnvelopeC<T>(Vector2d<T> p) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => new(p, default);
+
+    public static Circle<T> EnvelopeC<T>(Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var mid = new Vector2d<T>(T.CreateChecked((Dx(l.Start) + Dx(l.End)) / 2), T.CreateChecked((Dy(l.Start) + Dy(l.End)) / 2));
+        return new Circle<T>(mid, T.CreateChecked(Math.Sqrt(Dist2(l.Start, l.End)) / 2));
+    }
+
+    public static Circle<T> EnvelopeC<T>(Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => EnvelopeC(new Line<T>(r.Pos, r.Pos + r.Size));
+
+    public static Circle<T> EnvelopeC<T>(Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => c;
+
+    public static Circle<T> EnvelopeC<T>(Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        double ax = Dx(t.P0), ay = Dy(t.P0), bx = Dx(t.P1), by = Dy(t.P1), cx = Dx(t.P2), cy = Dy(t.P2);
+        var d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+        var ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d;
+        var uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d;
+        var r = 0.0;
+        r = Math.Max(r, Math.Sqrt((ux - ax) * (ux - ax) + (uy - ay) * (uy - ay)));
+        r = Math.Max(r, Math.Sqrt((ux - bx) * (ux - bx) + (uy - by) * (uy - by)));
+        r = Math.Max(r, Math.Sqrt((ux - cx) * (ux - cx) + (uy - cy) * (uy - cy)));
+        return new Circle<T>(new Vector2d<T>(T.CreateChecked(ux), T.CreateChecked(uy)), T.CreateChecked(r));
+    }
+
+    public static Rect<T> EnvelopeR<T>(Vector2d<T> p) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => new(p, new Vector2d<T>(default, default));
+
+    public static Rect<T> EnvelopeR<T>(Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        double minX = Math.Min(Dx(l.Start), Dx(l.End)), minY = Math.Min(Dy(l.Start), Dy(l.End));
+        return new Rect<T>(new Vector2d<T>(T.CreateChecked(minX), T.CreateChecked(minY)),
+            new Vector2d<T>(T.CreateChecked(Math.Abs(Dx(l.Start) - Dx(l.End))), T.CreateChecked(Math.Abs(Dy(l.Start) - Dy(l.End)))));
+    }
+
+    public static Rect<T> EnvelopeR<T>(Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => r;
+
+    public static Rect<T> EnvelopeR<T>(Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var r = Convert.ToDouble(c.Radius);
+        return new Rect<T>(new Vector2d<T>(T.CreateChecked(Dx(c.Pos) - r), T.CreateChecked(Dy(c.Pos) - r)),
+            new Vector2d<T>(T.CreateChecked(r * 2), T.CreateChecked(r * 2)));
+    }
+
+    public static Rect<T> EnvelopeR<T>(Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var minX = Math.Min(Dx(t.P0), Math.Min(Dx(t.P1), Dx(t.P2)));
+        var minY = Math.Min(Dy(t.P0), Math.Min(Dy(t.P1), Dy(t.P2)));
+        var maxX = Math.Max(Dx(t.P0), Math.Max(Dx(t.P1), Dx(t.P2)));
+        var maxY = Math.Max(Dy(t.P0), Math.Max(Dy(t.P1), Dy(t.P2)));
+        return new Rect<T>(new Vector2d<T>(T.CreateChecked(minX), T.CreateChecked(minY)),
+            new Vector2d<T>(T.CreateChecked(maxX - minX), T.CreateChecked(maxY - minY)));
+    }
+
+    public static Rect<T> BoundingBox<T>(Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => EnvelopeR(t);
+
+    // O--- Ray relations ---O
+    public static Vector2d<T> Closest<T>(Ray<T> q, Vector2d<T> p) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => p; // olc TODO
+
+    public static List<Vector2d<T>> Intersects<T>(Ray<T> q1, Ray<T> q2) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        double ox = Dx(q2.Origin) - Dx(q1.Origin), oy = Dy(q2.Origin) - Dy(q1.Origin);
+        var cp1 = Dx(q1.Direction) * Dy(q2.Direction) - Dy(q1.Direction) * Dx(q2.Direction);
+        var cp2 = ox * Dy(q2.Direction) - oy * Dx(q2.Direction);
+        if (cp1 == 0) return cp2 == 0 ? new List<Vector2d<T>> { q1.Origin } : new List<Vector2d<T>>();
+        var cp3 = ox * Dy(q1.Direction) - oy * Dx(q1.Direction);
+        double t1 = cp2 / cp1, t2 = cp3 / cp1;
+        return t1 >= 0 && t2 >= 0 ? new List<Vector2d<T>> { Along(q1.Origin, q1.Direction, t1) } : new List<Vector2d<T>>();
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Ray<T> q, Vector2d<T> p) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var l = new Line<T>(q.Origin, q.Origin + q.Direction);
+        return l.Side(p) == 0 ? new List<Vector2d<T>> { p } : new List<Vector2d<T>>();
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Ray<T> q, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        double ldx = Dx(l.End) - Dx(l.Start), ldy = Dy(l.End) - Dy(l.Start);
+        double ox = Dx(l.Start) - Dx(q.Origin), oy = Dy(l.Start) - Dy(q.Origin);
+        var cp1 = Dx(q.Direction) * ldy - Dy(q.Direction) * ldx;
+        var cp2 = ox * ldy - oy * ldx;
+        if (cp1 == 0) return cp2 == 0 ? new List<Vector2d<T>> { q.Origin } : new List<Vector2d<T>>();
+        var cp3 = ox * Dy(q.Direction) - oy * Dx(q.Direction);
+        double t1 = cp2 / cp1, t2 = cp3 / cp1;
+        return t1 >= 0 && t2 >= 0 && t2 <= 1 ? new List<Vector2d<T>> { Along(q.Origin, q.Direction, t1) } : new List<Vector2d<T>>();
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Ray<T> q, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        double dirx = Dx(q.Direction), diry = Dy(q.Direction), ox = Dx(q.Origin), oy = Dy(q.Origin), cx = Dx(c.Pos), cy = Dy(c.Pos);
+        var a = dirx * dirx + diry * diry;
+        var b = 2.0 * ((ox * dirx + oy * diry) - (cx * dirx + cy * diry));
+        var rad = Convert.ToDouble(c.Radius);
+        var cc = cx * cx + cy * cy + ox * ox + oy * oy - 2.0 * cx * ox - 2.0 * cy * oy - rad * rad;
+        var d = b * b - 4.0 * a * cc;
+        if (d < 0) return new List<Vector2d<T>>();
+        var sd = Math.Sqrt(d);
+        double s1 = (-b + sd) / (2 * a), s2 = (-b - sd) / (2 * a);
+        if (s1 < 0 && s2 < 0) return new List<Vector2d<T>>();
+        if (s1 < 0) return new List<Vector2d<T>> { Along(q.Origin, q.Direction, s2) };
+        if (s2 < 0) return new List<Vector2d<T>> { Along(q.Origin, q.Direction, s1) };
+        return new List<Vector2d<T>> { Along(q.Origin, q.Direction, Math.Min(s1, s2)), Along(q.Origin, q.Direction, Math.Max(s1, s2)) };
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Ray<T> q, Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var result = new List<Vector2d<T>>();
+        for (var i = 0; i < 4; i++) result.AddRange(Intersects(q, r.Side(i)));
+        return FilterDuplicatePoints(result);
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Ray<T> q, Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var result = new List<Vector2d<T>>();
+        for (var i = 0; i < 3; i++) result.AddRange(Intersects(q, t.Side(i)));
+        return FilterDuplicatePoints(result);
+    }
+
+    // Collision = nearest hit point + surface normal (null if no hit). Normals only make sense for
+    // floating-point T (an integer T truncates the unit normal).
+    public static (Vector2d<T> Point, Vector2d<T> Normal)? Collision<T>(Ray<T> q, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var hits = Intersects(q, l);
+        if (hits.Count == 0) return null;
+        return (hits[0], SideNormal(l, q.Origin));
+    }
+
+    public static (Vector2d<T> Point, Vector2d<T> Normal)? Collision<T>(Ray<T> q, Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        Vector2d<T> best = default, normal = default;
+        var bestDist = double.MaxValue;
+        var hit = false;
+        for (var i = 0; i < 4; i++)
+        {
+            var side = r.Side(i);
+            var hits = Intersects(q, side);
+            if (hits.Count == 0) continue;
+            var d = Dist2(hits[0], q.Origin);
+            if (d < bestDist)
+            {
+                bestDist = d; best = hits[0]; normal = SideNormal(side, q.Origin); hit = true;
+            }
+        }
+        return hit ? (best, normal) : null;
+    }
+
+    public static Ray<T>? Reflect<T>(Ray<T> q, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var col = Collision(q, l);
+        return col == null ? null : new Ray<T>(col.Value.Point, q.Direction.Reflect(col.Value.Normal));
+    }
+
+    public static Ray<T>? Reflect<T>(Ray<T> q, Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var col = Collision(q, r);
+        return col == null ? null : new Ray<T>(col.Value.Point, q.Direction.Reflect(col.Value.Normal));
+    }
+
+    // Unit normal of a line's perpendicular, oriented by which side the point is on.
+    private static Vector2d<T> SideNormal<T>(Line<T> l, Vector2d<T> point) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        double vx = Dx(l.End) - Dx(l.Start), vy = Dy(l.End) - Dy(l.Start);
+        var len = Math.Sqrt(vx * vx + vy * vy);
+        var sign = l.Side(point);
+        if (len == 0) return new Vector2d<T>(default, default);
+        return new Vector2d<T>(T.CreateChecked(-vy / len * sign), T.CreateChecked(vx / len * sign));
+    }
 }

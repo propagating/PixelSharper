@@ -134,5 +134,50 @@ namespace PixelSharperTests
             Assert.IsFalse(Geom2D.Overlaps(new Line<float>(V(0, 0), V(10, 0)), new Line<float>(V(0, 1), V(10, 1))));
             Assert.IsTrue(Geom2D.Overlaps(new Rect<float>(V(0, 0), V(10, 10)), new Line<float>(V(-5, 5), V(5, 5))));
         }
+
+        [Test]
+        public void Envelopes()
+        {
+            var er = Geom2D.EnvelopeR(new Circle<float>(V(5, 5), 3));
+            Assert.AreEqual(2, er.Pos.X, 1e-4);
+            Assert.AreEqual(6, er.Size.X, 1e-4);
+
+            var ec = Geom2D.EnvelopeC(new Rect<float>(V(0, 0), V(10, 10)));
+            Assert.AreEqual(5, ec.Pos.X, 1e-4);
+            Assert.AreEqual(System.Math.Sqrt(200) / 2, ec.Radius, 1e-3);
+
+            var ert = Geom2D.EnvelopeR(new Triangle<float>(V(0, 0), V(10, 0), V(0, 10)));
+            Assert.AreEqual(0, ert.Pos.X, 1e-4);
+            Assert.AreEqual(10, ert.Size.X, 1e-4);
+        }
+
+        [Test]
+        public void Ray_Intersects_Line_Circle_Rect()
+        {
+            var q = new Ray<float>(V(0, 5), V(1, 0)); // pointing +x from (0,5)
+
+            var hitLine = Geom2D.Intersects(q, new Line<float>(V(5, 0), V(5, 10)));
+            Assert.AreEqual(1, hitLine.Count);
+            Assert.AreEqual(5, hitLine[0].X, 1e-4);
+            Assert.AreEqual(5, hitLine[0].Y, 1e-4);
+
+            var hitCircle = Geom2D.Intersects(q, new Circle<float>(V(5, 5), 2));
+            Assert.AreEqual(2, hitCircle.Count); // enters (3,5), exits (7,5)
+
+            var hitRect = Geom2D.Intersects(new Ray<float>(V(-5, 5), V(1, 0)), new Rect<float>(V(0, 0), V(10, 10)));
+            Assert.AreEqual(2, hitRect.Count);
+
+            // Ray pointing away from the line -> no hit.
+            Assert.AreEqual(0, Geom2D.Intersects(new Ray<float>(V(0, 5), V(-1, 0)), new Line<float>(V(5, 0), V(5, 10))).Count);
+        }
+
+        [Test]
+        public void Ray_Reflect_OffLine()
+        {
+            var r = Geom2D.Reflect(new Ray<float>(V(0, 5), V(1, 0)), new Line<float>(V(5, 0), V(5, 10)));
+            Assert.IsTrue(r.HasValue);
+            Assert.AreEqual(5, r.Value.Origin.X, 1e-4);  // bounce point
+            Assert.Less(r.Value.Direction.X, 0);          // reflected back along -x
+        }
     }
 }
