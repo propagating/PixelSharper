@@ -12,4 +12,8 @@
       <Folder Include="Extensions\" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="OpenTK" Version="4.9.4" />
+    </ItemGroup>
+
 </Project>
