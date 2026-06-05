@@ -84,5 +84,55 @@ namespace PixelSharperTests
             Assert.AreEqual(256, r.Area());
             Assert.IsTrue(Geom2D.Contains(r, new Vector2d<int>(10, 10)));
         }
+
+        [Test]
+        public void Line_Intersects_Line()
+        {
+            var a = new Line<float>(V(0, 0), V(10, 10));
+            var b = new Line<float>(V(0, 10), V(10, 0));
+            var pts = Geom2D.Intersects(a, b);
+            Assert.AreEqual(1, pts.Count);
+            Assert.AreEqual(5, pts[0].X, 1e-4);
+            Assert.AreEqual(5, pts[0].Y, 1e-4);
+
+            // Parallel -> none.
+            Assert.AreEqual(0, Geom2D.Intersects(new Line<float>(V(0, 0), V(10, 0)), new Line<float>(V(0, 1), V(10, 1))).Count);
+        }
+
+        [Test]
+        public void Circle_Intersects_Line_TwoPoints()
+        {
+            var c = new Circle<float>(V(5, 5), 5);
+            var l = new Line<float>(V(0, 5), V(10, 5)); // horizontal diameter
+            var pts = Geom2D.Intersects(c, l);
+            Assert.AreEqual(2, pts.Count);
+            CollectionAssert.AreEquivalent(new[] { 0f, 10f }, new[] { (float)System.Math.Round(pts[0].X), (float)System.Math.Round(pts[1].X) });
+        }
+
+        [Test]
+        public void Circle_Intersects_Circle()
+        {
+            var pts = Geom2D.Intersects(new Circle<float>(V(0, 0), 5), new Circle<float>(V(8, 0), 5));
+            Assert.AreEqual(2, pts.Count);
+            // Chord centre x = 4; points at (4, +/-3).
+            foreach (var p in pts) Assert.AreEqual(4, p.X, 1e-3);
+            Assert.AreEqual(6, System.Math.Abs(pts[0].Y) + System.Math.Abs(pts[1].Y), 1e-3);
+        }
+
+        [Test]
+        public void Rect_Intersects_Line()
+        {
+            var r = new Rect<float>(V(0, 0), V(10, 10));
+            var pts = Geom2D.Intersects(r, new Line<float>(V(-5, 5), V(15, 5))); // crosses left+right
+            Assert.AreEqual(2, pts.Count);
+        }
+
+        [Test]
+        public void Overlaps_LineLine_And_RectLine()
+        {
+            Assert.IsTrue(Geom2D.Overlaps(new Line<float>(V(0, 0), V(10, 10)), new Line<float>(V(0, 10), V(10, 0))));
+            Assert.IsFalse(Geom2D.Overlaps(new Line<float>(V(0, 0), V(10, 0)), new Line<float>(V(0, 1), V(10, 1))));
+            Assert.IsTrue(Geom2D.Overlaps(new Rect<float>(V(0, 0), V(10, 10)), new Line<float>(V(-5, 5), V(5, 5))));
+        }
     }
 }

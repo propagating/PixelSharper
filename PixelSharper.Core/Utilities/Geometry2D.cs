@@ -212,4 +212,171 @@ public static class Geom2D
     }
 
     public static bool Overlaps<T>(Rect<T> r, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Overlaps(c, r);
+
+    // O--- Overlaps: line/triangle pairs ---O
+    public static bool Overlaps<T>(Vector2d<T> p, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Contains(l, p);
+
+    public static bool Overlaps<T>(Line<T> a, Line<T> b) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var dd = (Dy(b.End) - Dy(b.Start)) * (Dx(a.End) - Dx(a.Start)) - (Dx(b.End) - Dx(b.Start)) * (Dy(a.End) - Dy(a.Start));
+        if (dd == 0) return false; // parallel
+        var uA = ((Dx(b.End) - Dx(b.Start)) * (Dy(a.Start) - Dy(b.Start)) - (Dy(b.End) - Dy(b.Start)) * (Dx(a.Start) - Dx(b.Start))) / dd;
+        var uB = ((Dx(a.End) - Dx(a.Start)) * (Dy(a.Start) - Dy(b.Start)) - (Dy(a.End) - Dy(a.Start)) * (Dx(a.Start) - Dx(b.Start))) / dd;
+        return uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1;
+    }
+
+    public static bool Overlaps<T>(Rect<T> r, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => Contains(r, l.Start) || Overlaps(r.Top(), l) || Overlaps(r.Bottom(), l) || Overlaps(r.Left(), l) || Overlaps(r.Right(), l);
+    public static bool Overlaps<T>(Line<T> l, Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Overlaps(r, l);
+
+    public static bool Overlaps<T>(Circle<T> c, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => Dist2(c.Pos, Closest(l, c.Pos)) <= Convert.ToDouble(c.Radius) * Convert.ToDouble(c.Radius);
+    public static bool Overlaps<T>(Line<T> l, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Overlaps(c, l);
+
+    public static bool Overlaps<T>(Triangle<T> t, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => Overlaps(t, l.Start) || Overlaps(t.Side(0), l) || Overlaps(t.Side(1), l) || Overlaps(t.Side(2), l);
+    public static bool Overlaps<T>(Line<T> l, Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Overlaps(t, l);
+
+    public static bool Overlaps<T>(Triangle<T> t, Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => Overlaps(t, r.Top()) || Overlaps(t, r.Bottom()) || Overlaps(t, r.Left()) || Overlaps(t, r.Right()) || Contains(r, t.P0);
+    public static bool Overlaps<T>(Rect<T> r, Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Overlaps(t, r);
+
+    public static bool Overlaps<T>(Triangle<T> t, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => Contains(t, c.Pos) || Dist2(c.Pos, Closest(t, c.Pos)) <= Convert.ToDouble(c.Radius) * Convert.ToDouble(c.Radius);
+    public static bool Overlaps<T>(Circle<T> c, Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Overlaps(t, c);
+
+    public static bool Overlaps<T>(Triangle<T> a, Triangle<T> b) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => Overlaps(a, b.Side(0)) || Overlaps(a, b.Side(1)) || Overlaps(a, b.Side(2)) || Overlaps(b, a.P0);
+
+    // O--- Intersects: returns the set of intersection points ---O
+    private static List<Vector2d<T>> FilterDuplicatePoints<T>(List<Vector2d<T>> points) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var filtered = new List<Vector2d<T>>();
+        foreach (var p in points)
+        {
+            var dup = false;
+            foreach (var f in filtered)
+                if (Math.Abs(Dx(p) - Dx(f)) < Epsilon && Math.Abs(Dy(p) - Dy(f)) < Epsilon) { dup = true; break; }
+            if (!dup) filtered.Add(p);
+        }
+        return filtered;
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Line<T> l1, Line<T> l2, bool infinite = false) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        double v1x = Dx(l1.End) - Dx(l1.Start), v1y = Dy(l1.End) - Dy(l1.Start);
+        double v2x = Dx(l2.End) - Dx(l2.Start), v2y = Dy(l2.End) - Dy(l2.Start);
+        var rd = v1x * v2y - v1y * v2x;
+        if (rd == 0) return new List<Vector2d<T>>(); // parallel / colinear
+        rd = 1.0 / rd;
+        var rn = (v2x * (Dy(l1.Start) - Dy(l2.Start)) - v2y * (Dx(l1.Start) - Dx(l2.Start))) * rd;
+        var sn = (v1x * (Dy(l1.Start) - Dy(l2.Start)) - v1y * (Dx(l1.Start) - Dx(l2.Start))) * rd;
+        if (!infinite && (rn < 0 || rn > 1 || sn < 0 || sn > 1)) return new List<Vector2d<T>>();
+        return new List<Vector2d<T>>
+        {
+            new(T.CreateChecked(Dx(l1.Start) + rn * v1x), T.CreateChecked(Dy(l1.Start) + rn * v1y))
+        };
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Circle<T> c, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        if (!Overlaps(c, Closest(l, c.Pos))) return new List<Vector2d<T>>(); // segment too far
+        double dx = Dx(l.End) - Dx(l.Start), dy = Dy(l.End) - Dy(l.Start);
+        var mag2 = dx * dx + dy * dy;
+        var uLine = (dx * (Dx(c.Pos) - Dx(l.Start)) + dy * (Dy(c.Pos) - Dy(l.Start))) / mag2;
+        double clX = Dx(l.Start) + uLine * dx, clY = Dy(l.Start) + uLine * dy;
+        var distToLine = (Dx(c.Pos) - clX) * (Dx(c.Pos) - clX) + (Dy(c.Pos) - clY) * (Dy(c.Pos) - clY);
+        var r2 = Convert.ToDouble(c.Radius) * Convert.ToDouble(c.Radius);
+        if (Math.Abs(distToLine - r2) < Epsilon)
+            return new List<Vector2d<T>> { new(T.CreateChecked(clX), T.CreateChecked(clY)) }; // kisses
+
+        var half = Math.Sqrt(Math.Max(0.0, r2 - distToLine));
+        var nlen = Math.Sqrt(mag2);
+        double nx = dx / nlen, ny = dy / nlen;
+        var p1 = new Vector2d<T>(T.CreateChecked(clX + nx * half), T.CreateChecked(clY + ny * half));
+        var p2 = new Vector2d<T>(T.CreateChecked(clX - nx * half), T.CreateChecked(clY - ny * half));
+        var result = new List<Vector2d<T>>();
+        if (Dist2(p1, Closest(l, p1)) < Epsilon * Epsilon) result.Add(p1);
+        if (Dist2(p2, Closest(l, p2)) < Epsilon * Epsilon) result.Add(p2);
+        return FilterDuplicatePoints(result);
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Circle<T> c1, Circle<T> c2) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        if (c1.Pos == c2.Pos) return new List<Vector2d<T>>();
+        double bx = Dx(c2.Pos) - Dx(c1.Pos), by = Dy(c2.Pos) - Dy(c1.Pos);
+        var dist2 = bx * bx + by * by;
+        double r1 = Convert.ToDouble(c1.Radius), r2 = Convert.ToDouble(c2.Radius);
+        var radiusSum = r1 + r2;
+        if (dist2 > radiusSum * radiusSum) return new List<Vector2d<T>>();
+        if (Contains(c1, c2) || Contains(c2, c1)) return new List<Vector2d<T>>();
+        var dist = Math.Sqrt(dist2);
+        double nx = bx / dist, ny = by / dist;
+        var ccDist = (dist2 + r1 * r1 - r2 * r2) / (2 * dist);
+        double chordX = Dx(c1.Pos) + nx * ccDist, chordY = Dy(c1.Pos) + ny * ccDist;
+        var halfChord = Math.Sqrt(Math.Max(0.0, r1 * r1 - ccDist * ccDist));
+        double hx = -ny * halfChord, hy = nx * halfChord; // perpendicular of the unit between-vector
+        return new List<Vector2d<T>>
+        {
+            new(T.CreateChecked(chordX + hx), T.CreateChecked(chordY + hy)),
+            new(T.CreateChecked(chordX - hx), T.CreateChecked(chordY - hy))
+        };
+    }
+
+    // Side-decomposed intersects (collect side intersections, then dedup).
+    public static List<Vector2d<T>> Intersects<T>(Rect<T> r, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => FilterDuplicatePoints(Collect(l, r.Top(), r.Bottom(), r.Left(), r.Right()));
+
+    public static List<Vector2d<T>> Intersects<T>(Triangle<T> t, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+        => FilterDuplicatePoints(Collect(l, t.Side(0), t.Side(1), t.Side(2)));
+
+    public static List<Vector2d<T>> Intersects<T>(Rect<T> r1, Rect<T> r2) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var result = new List<Vector2d<T>>();
+        for (var i = 0; i < 4; i++) result.AddRange(Intersects(r1, r2.Side(i)));
+        return FilterDuplicatePoints(result);
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Circle<T> c, Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var result = new List<Vector2d<T>>();
+        for (var i = 0; i < 4; i++) result.AddRange(Intersects(c, r.Side(i)));
+        return FilterDuplicatePoints(result);
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Triangle<T> t, Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var result = new List<Vector2d<T>>();
+        for (var i = 0; i < 4; i++) result.AddRange(Intersects(t, r.Side(i)));
+        return FilterDuplicatePoints(result);
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Triangle<T> t, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var result = new List<Vector2d<T>>();
+        for (var i = 0; i < 3; i++) result.AddRange(Intersects(c, t.Side(i)));
+        return FilterDuplicatePoints(result);
+    }
+
+    public static List<Vector2d<T>> Intersects<T>(Triangle<T> t1, Triangle<T> t2) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var result = new List<Vector2d<T>>();
+        for (var i = 0; i < 3; i++) result.AddRange(Intersects(t1, t2.Side(i)));
+        return FilterDuplicatePoints(result);
+    }
+
+    // Reverse convenience overloads.
+    public static List<Vector2d<T>> Intersects<T>(Line<T> l, Rect<T> r) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Intersects(r, l);
+    public static List<Vector2d<T>> Intersects<T>(Line<T> l, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Intersects(c, l);
+    public static List<Vector2d<T>> Intersects<T>(Line<T> l, Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Intersects(t, l);
+    public static List<Vector2d<T>> Intersects<T>(Rect<T> r, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Intersects(c, r);
+    public static List<Vector2d<T>> Intersects<T>(Rect<T> r, Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Intersects(t, r);
+    public static List<Vector2d<T>> Intersects<T>(Circle<T> c, Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Intersects(t, c);
+
+    private static List<Vector2d<T>> Collect<T>(Line<T> l, params Line<T>[] sides) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var result = new List<Vector2d<T>>();
+        foreach (var side in sides) result.AddRange(Intersects(side, l));
+        return result;
+    }
 }
