@@ -3,6 +3,7 @@ using PixelSharper.Core.Enums;
 using PixelSharper.Core.Extensions;
 using PixelSharper.Core.Extensions.Wire;
 using PixelSharper.Core.Types;
+using Gui = PixelSharper.Core.Extensions.QuickGui;
 
 #region license
 // License (OLC-3)
@@ -70,6 +71,8 @@ namespace PixelSharper.Core
         private Decal _decal;
         private Model _gear;
         private TransformedView _view;
+        private Gui.Manager _gui;
+        private readonly System.Collections.Generic.List<string> _guiItems = new() { "Alpha", "Beta", "Gamma", "Delta", "Epsilon" };
 
         private static readonly float[] Identity4x4 =
         {
@@ -108,6 +111,14 @@ namespace PixelSharper.Core
             // TransformedView (pan/zoom camera) covering the screen.
             _view = new TransformedView();
             _view.Initialise(new Vector2d<int>(ScreenWidth(), ScreenHeight()));
+
+            // QuickGUI extension: a small panel (label, button, checkbox, slider, scrollable list).
+            _gui = new Gui.Manager();
+            _ = new Gui.Label(_gui, "QuickGUI", new Vector2d<float>(150, 148), new Vector2d<float>(90, 12)) { HasBorder = true };
+            _ = new Gui.Button(_gui, "OK", new Vector2d<float>(150, 162), new Vector2d<float>(40, 14));
+            _ = new Gui.CheckBox(_gui, "On", true, new Vector2d<float>(196, 162), new Vector2d<float>(44, 14));
+            _ = new Gui.Slider(_gui, new Vector2d<float>(156, 182), new Vector2d<float>(234, 182), 0, 100, 50);
+            _ = new Gui.ListBox(_gui, _guiItems, new Vector2d<float>(150, 190), new Vector2d<float>(90, 46));
             return true;
         }
 
@@ -118,6 +129,7 @@ namespace PixelSharper.Core
                 return false;
 
             _t += elapsedTime;
+            _gui.Update(this);
             Clear(Pixel.VERY_DARK_BLUE);
 
             // Primitives showcase
@@ -168,6 +180,9 @@ namespace PixelSharper.Core
             FillRectDecal(new Vector2d<float>(150, 188), new Vector2d<float>(70, 18), new Pixel(0, 128, 255, 128));
             DrawStringDecal(new Vector2d<float>(152, 192), "decal text", Pixel.WHITE);
             DrawDecal(new Vector2d<float>(120, 20), _decal.ToDecalPatch(), new Vector2d<float>(20, 20));
+
+            // QuickGUI panel (GPU decal path).
+            _gui.DrawDecal(this);
 
             // HW3D: a wireframe box (depth off => drawn directly in NDC, top-left corner).
             HW3D_EnableDepthTest(false);
