@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using PixelSharper.Core.Actions;
 using PixelSharper.Core.Components;
 using PixelSharper.Core.Enums;
@@ -12,8 +13,7 @@ namespace PixelSharper.Core.Extensions.QuickGui;
 // store float positions; CPU primitives take Vector2d<int> (truncated here via Vi), decal draws take
 // Vector2d<float> (Vf). Vector2d's scalar operators were removed, so the math is done component-wise.
 //
-// NOT ported: TextBox (needs the olc text-entry subsystem, which the engine doesn't have yet) and
-// ModalDialog (a std::filesystem file browser built on that). Everything else is here.
+// Complete: TextBox uses the engine's text-entry subsystem; ModalDialog is a System.IO file browser.
 
 public abstract class BaseControl
 {
@@ -506,5 +506,147 @@ public class ListBox : BaseControl
             pge.SetDecalMode(DecalMode.Normal);
         }
         _group.DrawDecal(pge);
+    }
+}
+
+// An editable single-line text field. Clicking it begins engine text entry; clicking away (or the
+// field losing entry) commits the typed string back into Text.
+public class TextBox : Label
+{
+    private bool _textEdit;
+
+    public TextBox(Manager manager, string text, Vector2d<float> pos, Vector2d<float> size)
+        : base(manager, text, pos, size)
+    {
+        Align = Alignment.Left;
+        HasBorder = true;
+        HasBackground = false;
+    }
+
+    public override void Update(PixelGameEngine pge)
+    {
+        if (State == ControlState.Disabled || !Visible) return;
+        Pressed = false;
+        Released = false;
+        var mp = pge.GetMousePos();
+        float mx = mp.X, my = mp.Y;
+
+        if (mx >= Pos.X && mx < Pos.X + Size.X && my >= Pos.Y && my < Pos.Y + Size.Y)
+        {
+            Pressed = pge.GetMouse(MouseLeft).Pressed;
+            Released = pge.GetMouse(MouseLeft).Released;
+            // Clicking this box takes over text entry from any other field.
+            if (Pressed && pge.IsTextEntryEnabled() && !_textEdit) pge.TextEntryEnable(false);
+            if (Pressed && !pge.IsTextEntryEnabled() && !_textEdit) { pge.TextEntryEnable(true, Text); _textEdit = true; }
+            Held = pge.GetMouse(MouseLeft).Held;
+        }
+        else
+        {
+            Pressed = pge.GetMouse(MouseLeft).Pressed;
+            Released = pge.GetMouse(MouseLeft).Released;
+            Held = pge.GetMouse(MouseLeft).Held;
+            // Clicking away commits the edit.
+            if (Pressed && _textEdit) { Text = pge.TextEntryGetString(); pge.TextEntryEnable(false); _textEdit = false; }
+        }
+
+        if (_textEdit && pge.IsTextEntryEnabled()) Text = pge.TextEntryGetString();
+    }
+
+    public override void Draw(PixelGameEngine pge)
+    {
+        if (!Visible) return;
+        if (HasBackground) pge.FillRect(Vi(Pos.X + 1, Pos.Y + 1), Vi(Size.X - 2, Size.Y - 2), ManagerRef.ColNormal);
+        if (HasBorder) pge.DrawRect(Vi(Pos.X, Pos.Y), Vi(Size.X - 1, Size.Y - 1), ManagerRef.ColBorder);
+        if (_textEdit && pge.IsTextEntryEnabled())
+        {
+            var c = pge.GetTextSizeProp(Text.Substring(0, Math.Min(pge.TextEntryGetCursor(), Text.Length)));
+            pge.FillRect(Vi(Pos.X + 2 + c.X, Pos.Y + (Size.Y - 10) * 0.5f), Vi(2, 10), ManagerRef.ColText);
+        }
+        var t = pge.GetTextSizeProp(Text);
+        pge.DrawStringProp(Vi(Pos.X + 2, Pos.Y + (Size.Y - t.Y) * 0.5f), Text, ManagerRef.ColText);
+    }
+
+    public override void DrawDecal(PixelGameEngine pge)
+    {
+        if (!Visible) return;
+        if (HasBackground) pge.FillRectDecal(Vf(Pos.X + 1, Pos.Y + 1), Vf(Size.X - 2, Size.Y - 2), ManagerRef.ColNormal);
+        if (HasBorder)
+        {
+            pge.SetDecalMode(DecalMode.Wireframe);
+            pge.FillRectDecal(Vf(Pos.X + 1, Pos.Y + 1), Vf(Size.X - 2, Size.Y - 2), ManagerRef.ColBorder);
+            pge.SetDecalMode(DecalMode.Normal);
+        }
+        if (_textEdit && pge.IsTextEntryEnabled())
+        {
+            var c = pge.GetTextSizeProp(Text.Substring(0, Math.Min(pge.TextEntryGetCursor(), Text.Length)));
+            pge.FillRectDecal(Vf(Pos.X + 2 + c.X, Pos.Y + (Size.Y - 10) * 0.5f), Vf(2, 10), ManagerRef.ColText);
+        }
+        var t = pge.GetTextSizeProp(Text);
+        pge.DrawStringPropDecal(Vf(Pos.X + 2, Pos.Y + (Size.Y - t.Y) * 0.5f), Text, ManagerRef.ColText);
+    }
+}
+
+// A self-hooking (PGEX) modal file-open browser built from two ListBoxes. ShowFileOpen() opens it;
+// it blocks the user frame while shown (BACK = parent folder, a directory click descends, ESC closes).
+public class ModalDialog : PGEX
+{
+    private bool _showDialog;
+    private readonly Manager _fileSelect = new();
+    private readonly ListBox _listDirectory;
+    private readonly ListBox _listFiles;
+    private readonly List<string> _directory = new();
+    private readonly List<string> _files = new();
+    private string _path;
+
+    public ModalDialog() : base(true)
+    {
+        _listDirectory = new ListBox(_fileSelect, _directory, new Vector2d<float>(20, 20), new Vector2d<float>(300, 500));
+        _listFiles = new ListBox(_fileSelect, _files, new Vector2d<float>(330, 20), new Vector2d<float>(300, 500));
+        _path = Path.GetPathRoot(Directory.GetCurrentDirectory()) ?? Path.DirectorySeparatorChar.ToString();
+        Populate();
+    }
+
+    public void ShowFileOpen(string path) => _showDialog = true;
+
+    private void Populate()
+    {
+        _directory.Clear();
+        _files.Clear();
+        try
+        {
+            foreach (var d in Directory.GetDirectories(_path)) _directory.Add(Path.GetFileName(d.TrimEnd(Path.DirectorySeparatorChar)));
+            foreach (var f in Directory.GetFiles(_path)) _files.Add(Path.GetFileName(f));
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
+    protected internal override bool OnBeforeUserUpdate(ref float elapsedTime)
+    {
+        if (!_showDialog) return false;
+
+        _fileSelect.Update(Pge);
+
+        if (Pge.GetKey(KeyPress.BACK).Pressed)
+        {
+            var parent = Directory.GetParent(_path.TrimEnd(Path.DirectorySeparatorChar));
+            if (parent != null) { _path = parent.FullName; Populate(); }
+        }
+
+        if (_listDirectory.SelectionChanged && _listDirectory.SelectedItem < _directory.Count)
+        {
+            _path = Path.Combine(_path, _directory[_listDirectory.SelectedItem]);
+            Populate();
+        }
+
+        Pge.DrawStringDecal(new Vector2d<float>(0, 0), _path);
+        _fileSelect.DrawDecal(Pge);
+
+        if (Pge.GetKey(KeyPress.ESCAPE).Pressed)
+        {
+            _showDialog = false;
+            return false;
+        }
+        return true;
     }
 }

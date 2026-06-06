@@ -68,5 +68,24 @@ namespace PixelSharperTests
             // The ListBox registers with the outer manager; its scroll Slider lives in a private group.
             Assert.AreEqual(1, m.ControlCount);
         }
+
+        [Test]
+        public void TextBox_ForcesLeftBorderNoBackground()
+        {
+            var m = new Manager();
+            var tb = new TextBox(m, "edit me", V(0, 0), V(120, 16));
+            Assert.AreEqual("edit me", tb.Text);
+            Assert.AreEqual(Label.Alignment.Left, tb.Align);
+            Assert.IsTrue(tb.HasBorder);
+            Assert.IsFalse(tb.HasBackground);
+            Assert.AreEqual(1, m.ControlCount);
+        }
+
+        [Test]
+        public void ModalDialog_ConstructsHeadlessly()
+        {
+            // Builds its ListBoxes + reads the filesystem root without needing a running engine.
+            Assert.DoesNotThrow(() => { _ = new ModalDialog(); });
+        }
     }
 }

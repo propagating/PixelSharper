@@ -114,6 +114,7 @@ namespace PixelSharper.Core
 
             // QuickGUI extension: a small panel (label, button, checkbox, slider, scrollable list).
             _gui = new Gui.Manager();
+            _ = new Gui.TextBox(_gui, "type here", new Vector2d<float>(150, 134), new Vector2d<float>(90, 12));
             _ = new Gui.Label(_gui, "QuickGUI", new Vector2d<float>(150, 148), new Vector2d<float>(90, 12)) { HasBorder = true };
             _ = new Gui.Button(_gui, "OK", new Vector2d<float>(150, 162), new Vector2d<float>(40, 14));
             _ = new Gui.CheckBox(_gui, "On", true, new Vector2d<float>(196, 162), new Vector2d<float>(44, 14));
