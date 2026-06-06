@@ -21,6 +21,9 @@ public abstract class PixelGameEngine
     public string ApplicationName { get; set; }
     public abstract bool OnCreate();
     public abstract bool OnUpdate(float elapsedTime);
+    // Called once when the engine is shutting down (olc's OnUserDestroy). Override for cleanup;
+    // return false to veto the shutdown and keep running.
+    public virtual bool OnDestroy() => true;
     public static PixelConfiguration Configuration { get; set; }
 
     // --- Construction-time configuration (set by Construct) ---
@@ -161,6 +164,8 @@ public abstract class PixelGameEngine
         {
             CoreUpdate();
             if (_platform.ShouldClose) _active = false;
+            // When shutdown is requested, let the user veto it (olc's OnUserDestroy contract).
+            if (!_active && !OnDestroy()) _active = true;
         }
 
         _platform.ThreadCleanUp();
@@ -353,10 +358,14 @@ public abstract class PixelGameEngine
         if (layer < _layers.Count) _layers[layer].VOffset = offset;
     }
 
+    public void SetLayerOffset(byte layer, float x, float y) => SetLayerOffset(layer, new Vector2d<float>(x, y));
+
     public void SetLayerScale(byte layer, Vector2d<float> scale)
     {
         if (layer < _layers.Count) _layers[layer].VScale = scale;
     }
+
+    public void SetLayerScale(byte layer, float x, float y) => SetLayerScale(layer, new Vector2d<float>(x, y));
 
     public void SetLayerTint(byte layer, Pixel tint)
     {
@@ -1973,6 +1982,23 @@ public abstract class PixelGameEngine
             di.Pos.Add(ScreenTransform(pos[i].X, pos[i].Y));
             di.Uv.Add(uv[i]);
             di.Tint.Add(t);
+            di.W.Add(depth[i]);
+        }
+        SubmitDecal(di);
+    }
+
+    // Depth + per-vertex colours (× tint) — the full olc DrawPolygonDecal overload.
+    public void DrawPolygonDecal(Decal decal, IReadOnlyList<Vector2d<float>> pos, IReadOnlyList<float> depth,
+        IReadOnlyList<Vector2d<float>> uv, IReadOnlyList<Pixel> colours, Pixel tint)
+    {
+        var di = NextDecalInstance();
+        di.Decal = decal;
+        di.Points = (uint)pos.Count;
+        for (var i = 0; i < pos.Count; i++)
+        {
+            di.Pos.Add(ScreenTransform(pos[i].X, pos[i].Y));
+            di.Uv.Add(uv[i]);
+            di.Tint.Add(colours[i] * tint);
             di.W.Add(depth[i]);
         }
         SubmitDecal(di);

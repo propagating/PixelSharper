@@ -179,5 +179,34 @@ namespace PixelSharperTests
             Assert.AreEqual(5, r!.Value.Origin.X, 1e-4);  // bounce point
             Assert.Less(r.Value.Direction.X, 0);          // reflected back along -x
         }
+
+        [Test]
+        public void Ray_Collision_And_Reflect_OffCircle()
+        {
+            var q = new Ray<float>(V(0, 5), V(1, 0));
+            var col = Geom2D.Collision(q, new Circle<float>(V(5, 5), 2));
+            Assert.IsTrue(col.HasValue);
+            Assert.AreEqual(3, col!.Value.Point.X, 1e-3);  // near intersection
+            Assert.Less(col.Value.Normal.X, 0);            // surface normal points back at the ray
+
+            var r = Geom2D.Reflect(q, new Circle<float>(V(5, 5), 2));
+            Assert.IsTrue(r.HasValue);
+            Assert.Less(r!.Value.Direction.X, 0);
+        }
+
+        [Test]
+        public void Ray_Collision_OffTriangle_HitsNearestEdge()
+        {
+            var t = new Triangle<float>(V(0, 0), V(10, 0), V(0, 10));
+            var col = Geom2D.Collision(new Ray<float>(V(-5, 1), V(1, 0)), t);
+            Assert.IsTrue(col.HasValue);
+            Assert.AreEqual(0, col!.Value.Point.X, 1e-3); // enters via the left edge first
+        }
+
+        [Test]
+        public void Reflect_RayVsRay_IsNull()
+        {
+            Assert.IsNull(Geom2D.Reflect(new Ray<float>(V(0, 0), V(1, 0)), new Ray<float>(V(1, 0), V(0, 1))));
+        }
     }
 }

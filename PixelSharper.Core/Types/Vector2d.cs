@@ -285,6 +285,9 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2d<TOut> As<TOut>() where TOut : struct, INumber<TOut>, IEquatable<TOut>, IComparable<TOut>
         => new Vector2d<TOut>(TOut.CreateChecked(X), TOut.CreateChecked(Y));
+
+    // The components as a 2-element array (olc's v_2d::a()).
+    public T[] ToArray() => new[] { X, Y };
     #endregion
     
     #region interface methods

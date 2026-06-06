@@ -5,9 +5,10 @@ using PixelSharper.Core.Types;
 namespace PixelSharper.Core.Utilities.Geometry;
 
 // Port of a useful slice of olcUTIL_Geometry2D (olc::utils::geom2d): the shape types and the
-// common Closest / Contains / Overlaps relations. olc's relations mix T and double arithmetic
-// freely; here the math runs in double internally (via Geom2D helpers) and results convert back
-// to T. The full intersects() matrix, polygon/ray relations, etc. are not yet ported.
+// Closest / Contains / Overlaps relations, the full Intersects matrix (incl. ray pairs),
+// EnvelopeC/EnvelopeR bounding shapes, and ray Collision/Reflect (line/rect/circle/triangle).
+// olc's relations mix T and double arithmetic freely; here the math runs in double internally (via
+// Geom2D helpers) and converts back to T. (olc's `polygon` is a bare data struct with no relations.)
 
 // Type-constraint shorthand isn't possible in C#, so the shapes/relations repeat the same
 // numeric constraint Vector2d<T> uses.
@@ -543,6 +544,52 @@ public static class Geom2D
         var col = Collision(q, r);
         return col == null ? null : new Ray<T>(col.Value.Point, q.Direction.Reflect(col.Value.Normal));
     }
+
+    public static (Vector2d<T> Point, Vector2d<T> Normal)? Collision<T>(Ray<T> q, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var hits = Intersects(q, c);
+        if (hits.Count == 0) return null;
+        double nx = Dx(hits[0]) - Dx(c.Pos), ny = Dy(hits[0]) - Dy(c.Pos);
+        var len = Math.Sqrt(nx * nx + ny * ny);
+        var normal = len == 0 ? default : new Vector2d<T>(T.CreateChecked(nx / len), T.CreateChecked(ny / len));
+        return (hits[0], normal);
+    }
+
+    public static (Vector2d<T> Point, Vector2d<T> Normal)? Collision<T>(Ray<T> q, Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        Vector2d<T> best = default, normal = default;
+        var bestDist = double.MaxValue;
+        var hit = false;
+        for (var i = 0; i < 3; i++)
+        {
+            var side = t.Side(i);
+            var hits = Intersects(q, side);
+            if (hits.Count == 0) continue;
+            var d = Dist2(hits[0], q.Origin);
+            if (d >= bestDist) continue;
+            bestDist = d; best = hits[0]; hit = true;
+            double vx = Dx(side.End) - Dx(side.Start), vy = Dy(side.End) - Dy(side.Start);
+            var len = Math.Sqrt(vx * vx + vy * vy); // unit perpendicular of the side
+            normal = len == 0 ? default : new Vector2d<T>(T.CreateChecked(-vy / len), T.CreateChecked(vx / len));
+        }
+        return hit ? (best, normal) : null;
+    }
+
+    public static Ray<T>? Reflect<T>(Ray<T> q, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var col = Collision(q, c);
+        return col == null ? null : new Ray<T>(col.Value.Point, q.Direction.Reflect(col.Value.Normal));
+    }
+
+    public static Ray<T>? Reflect<T>(Ray<T> q, Triangle<T> t) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
+    {
+        var col = Collision(q, t);
+        return col == null ? null : new Ray<T>(col.Value.Point, q.Direction.Reflect(col.Value.Normal));
+    }
+
+    // olc: a ray can't be reflected off another ray, nor (yet) off a point.
+    public static Ray<T>? Reflect<T>(Ray<T> q1, Ray<T> q2) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => null;
+    public static Ray<T>? Reflect<T>(Ray<T> q, Vector2d<T> p) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => null;
 
     // Unit normal of a line's perpendicular, oriented by which side the point is on.
     private static Vector2d<T> SideNormal<T>(Line<T> l, Vector2d<T> point) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
