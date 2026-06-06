@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using PixelSharper.Core.Actions;
 using PixelSharper.Core.Extensions;
 using PixelSharper.Core.Components;
@@ -26,6 +28,7 @@ public abstract class PixelGameEngine
     public bool EnableVSYNC { get; set; }
     public bool FullScreen { get; set; }
     public Vector2d<int> WindowSize { get; set; }
+    public Vector2d<int> WindowPos { get; set; }
     public Vector2d<int> PixelSize { get; set; }
     public Vector2d<float> InvScreenSize { get; set; }
     public Vector2d<int> ScreenSize { get; set; }
@@ -221,6 +224,16 @@ public abstract class PixelGameEngine
         _mouseWheelDelta = _mouseWheelDeltaCache;
         _mouseWheelDeltaCache = 0;
 
+        // Build this frame's key-press cache (keys that just transitioned down) and feed it to the
+        // text-entry / console subsystems.
+        _keyPressCache.Clear();
+        for (var k = 1; k < _keyboardState.Length; k++)
+            if (_keyboardState[k].Pressed) _keyPressCache.Add(k);
+        if (_textEntryEnable) UpdateTextEntry();
+
+        // The console can freeze game time while it is open.
+        if (_consoleSuspendTime) elapsedTime = 0f;
+
         // Handle frame update. Extensions may modify the frame time or block the user frame
         // entirely (e.g. a splash screen plays before the game starts).
         var blockFrame = false;
@@ -239,46 +252,57 @@ public abstract class PixelGameEngine
             ViewPos = new Vector2d<int>(0, 0);
         }
 
-        // Display frame
-        _renderer.UpdateViewport(ViewPos, ViewSize);
-        _renderer.ClearBuffer(Pixel.BLACK, true);
-
-        // Layer 0 must always exist and is always shown/updated
-        _layers[0].BUpdate = true;
-        _layers[0].BShow = true;
-        SetDecalMode(DecalMode.Normal); // resets the engine's decal mode for this frame's submissions
-        _renderer.PrepareDrawing();
-
-        for (var i = _layers.Count - 1; i >= 0; i--)
+        // The automatic render (console overlay + per-layer flush) is skipped in manual-render mode;
+        // the user then drives it explicitly via adv_HardwareClip / adv_FlushLayer*.
+        if (!_manualRenderEnable)
         {
-            var layer = _layers[i];
-            if (!layer.BShow) continue;
-
-            if (layer.FuncHook == null)
+            // The console overlay draws (as decals) into layer 0, on top of the user's frame.
+            if (_consoleShow)
             {
-                _renderer.ApplyTexture((uint)layer.PDrawTarget.Decal.Id);
-                if (!_suspendTextureTransfer && layer.BUpdate)
-                {
-                    layer.PDrawTarget.Decal.Update();
-                    layer.BUpdate = false;
-                }
-
-                _renderer.DrawLayerQuad(layer.VOffset, layer.VScale, layer.Tint);
-
-                // GPU tasks (2D/3D objects). Flush the live entries, then reset the count so the
-                // pooled GPUTask objects are reused next frame (no per-frame allocation).
-                for (var k = 0; k < layer.GpuTaskCount; k++)
-                    _renderer.DoGPUTask(layer.VecGPUTasks[k]);
-                layer.GpuTaskCount = 0;
-
-                // Decals, in submission order (same pooling: reset the count, keep the objects).
-                for (var k = 0; k < layer.DecalInstanceCount; k++)
-                    _renderer.DrawDecal(layer.VecDecalInstance[k]);
-                layer.DecalInstanceCount = 0;
+                SetDrawTarget((byte)0);
+                UpdateConsole();
             }
-            else
+
+            _renderer.UpdateViewport(ViewPos, ViewSize);
+            _renderer.ClearBuffer(Pixel.BLACK, true);
+
+            // Layer 0 must always exist and is always shown/updated
+            _layers[0].BUpdate = true;
+            _layers[0].BShow = true;
+            SetDecalMode(DecalMode.Normal); // resets the engine's decal mode for this frame's submissions
+            _renderer.PrepareDrawing();
+
+            for (var i = _layers.Count - 1; i >= 0; i--)
             {
-                layer.FuncHook();
+                var layer = _layers[i];
+                if (!layer.BShow) continue;
+
+                if (layer.FuncHook == null)
+                {
+                    _renderer.ApplyTexture((uint)layer.PDrawTarget.Decal.Id);
+                    if (!_suspendTextureTransfer && layer.BUpdate)
+                    {
+                        layer.PDrawTarget.Decal.Update();
+                        layer.BUpdate = false;
+                    }
+
+                    _renderer.DrawLayerQuad(layer.VOffset, layer.VScale, layer.Tint);
+
+                    // GPU tasks (2D/3D objects). Flush the live entries, then reset the count so the
+                    // pooled GPUTask objects are reused next frame (no per-frame allocation).
+                    for (var k = 0; k < layer.GpuTaskCount; k++)
+                        _renderer.DoGPUTask(layer.VecGPUTasks[k]);
+                    layer.GpuTaskCount = 0;
+
+                    // Decals, in submission order (same pooling: reset the count, keep the objects).
+                    for (var k = 0; k < layer.DecalInstanceCount; k++)
+                        _renderer.DrawDecal(layer.VecDecalInstance[k]);
+                    layer.DecalInstanceCount = 0;
+                }
+                else
+                {
+                    layer.FuncHook();
+                }
             }
         }
 
@@ -357,6 +381,14 @@ public abstract class PixelGameEngine
     public Vector2d<int> GetWindowMouse() => _mouseWindowPos;
     public int GetMouseWheel() => _mouseWheelDelta;
     public bool IsFocused() => _hasInputFocus;
+
+    // olc-named size/FPS accessors (the underlying values are also exposed as properties).
+    public uint GetFPS() => LastFps;
+    public Vector2d<int> GetScreenSize() => ScreenSize;
+    public Vector2d<int> GetScreenPixelSize() => ScreenPixelSize;
+    public Vector2d<int> GetPixelSize() => PixelSize;
+    public Vector2d<int> GetWindowSize() => WindowSize;
+    public Vector2d<int> GetWindowPos() => WindowPos;
     // Files dropped onto the window this frame (empty otherwise), and the drop point in pixel space.
     public IReadOnlyList<string> GetDroppedFiles() => _droppedFiles;
     public Vector2d<int> GetDroppedFilesPoint() => _droppedFilesPoint;
@@ -398,6 +430,371 @@ public abstract class PixelGameEngine
             oldState[i] = newState[i];
         }
     }
+
+    // O-------------------------------------------------------------------O
+    // | Text entry (port of olc's TextEntry* + UpdateTextEntry)           |
+    // O-------------------------------------------------------------------O
+
+    private bool _textEntryEnable;
+    private string _textEntryString = "";
+    private int _textEntryCursor;
+    private readonly List<string> _commandHistory = new();
+    private int _commandHistoryIndex; // == count when not browsing history
+    private readonly List<int> _keyPressCache = new();
+    private Dictionary<KeyPress, (string Normal, string Shift, string Ctrl, string Alt)> _keyboardMap;
+    private bool _consoleShow;
+    private bool _consoleSuspendTime;
+
+    // Begins/ends text-entry mode, seeding the buffer + cursor with the supplied text.
+    public void TextEntryEnable(bool enable, string text = "")
+    {
+        if (enable)
+        {
+            _textEntryCursor = text.Length;
+            _textEntryString = text;
+            _textEntryEnable = true;
+        }
+        else
+        {
+            _textEntryEnable = false;
+        }
+    }
+
+    public string TextEntryGetString() => _textEntryString;
+    public int TextEntryGetCursor() => _textEntryCursor;
+    public bool IsTextEntryEnabled() => _textEntryEnable;
+
+    // [ADVANCED] Keys that transitioned to Pressed this frame (KeyPress values cast to int).
+    public IReadOnlyList<int> GetKeyPressCache() => _keyPressCache;
+
+    // [ADVANCED] Our "keycodes" are KeyPress enum values, so this is a range-checked cast.
+    public KeyPress ConvertKeycode(int keycode)
+        => keycode > 0 && keycode < (int)KeyPress.ENUM_END ? (KeyPress)keycode : KeyPress.NONE;
+
+    // [ADVANCED] Character(s) a key yields given modifiers ("" if none). Navigation keys map to
+    // command symbols: "_L"/"_R" cursor, "_U"/"_D" history, "_X" delete, "\b" backspace, "\n" enter.
+    public string GetKeySymbol(KeyPress key, bool shift = false, bool ctrl = false, bool alt = false)
+    {
+        _keyboardMap ??= BuildKeyboardMap();
+        if (!_keyboardMap.TryGetValue(key, out var e)) return "";
+        if (shift) return e.Shift;
+        if (ctrl) return e.Ctrl;
+        if (alt) return e.Alt;
+        return e.Normal;
+    }
+
+    // Accumulate this frame's typed keys into the text-entry buffer (port of UpdateTextEntry).
+    private void UpdateTextEntry()
+    {
+        var shift = GetKey(KeyPress.SHIFT).Held;
+        var ctrl = GetKey(KeyPress.CTRL).Held;
+        foreach (var keycode in _keyPressCache)
+        {
+            var sym = GetKeySymbol(ConvertKeycode(keycode), shift, ctrl);
+            switch (sym)
+            {
+                case "_L": _textEntryCursor = Math.Max(0, _textEntryCursor - 1); break;
+                case "_R": _textEntryCursor = Math.Min(_textEntryString.Length, _textEntryCursor + 1); break;
+                case "\b" when _textEntryCursor > 0:
+                    _textEntryString = _textEntryString.Remove(_textEntryCursor - 1, 1);
+                    _textEntryCursor = Math.Max(0, _textEntryCursor - 1);
+                    break;
+                case "_X" when _textEntryCursor < _textEntryString.Length:
+                    _textEntryString = _textEntryString.Remove(_textEntryCursor, 1);
+                    break;
+                case "_U": // recall an older command from history
+                    if (_commandHistory.Count > 0)
+                    {
+                        if (_commandHistoryIndex > 0) _commandHistoryIndex--;
+                        _textEntryString = _commandHistory[_commandHistoryIndex];
+                        _textEntryCursor = _textEntryString.Length;
+                    }
+                    break;
+                case "_D": // recall a newer command from history (or clear past the end)
+                    if (_commandHistory.Count > 0 && _commandHistoryIndex < _commandHistory.Count)
+                    {
+                        _commandHistoryIndex++;
+                        if (_commandHistoryIndex < _commandHistory.Count)
+                        {
+                            _textEntryString = _commandHistory[_commandHistoryIndex];
+                            _textEntryCursor = _textEntryString.Length;
+                        }
+                        else { _textEntryString = ""; _textEntryCursor = 0; }
+                    }
+                    break;
+                case "\n":
+                    if (_consoleShow)
+                    {
+                        if (OnConsoleCommand(_textEntryString))
+                        {
+                            _commandHistory.Add(_textEntryString);
+                            _commandHistoryIndex = _commandHistory.Count;
+                        }
+                        _textEntryString = "";
+                        _textEntryCursor = 0;
+                    }
+                    else
+                    {
+                        OnTextEntryComplete(_textEntryString);
+                        TextEntryEnable(false);
+                    }
+                    break;
+                default:
+                    if (sym.Length == 1)
+                    {
+                        _textEntryString = _textEntryString.Insert(_textEntryCursor, sym);
+                        _textEntryCursor++;
+                    }
+                    break;
+            }
+        }
+    }
+
+    // Override: called with the final string when the user presses ENTER to finish text entry.
+    protected virtual void OnTextEntryComplete(string text) { }
+    // Override: called when a console command is entered; return true to record it in history.
+    protected virtual bool OnConsoleCommand(string command) => false;
+
+    // The olc keyboard symbol table (KeyPress -> normal / shift / ctrl / alt).
+    private static Dictionary<KeyPress, (string, string, string, string)> BuildKeyboardMap()
+    {
+        var m = new Dictionary<KeyPress, (string, string, string, string)>();
+        for (var k = KeyPress.A; k <= KeyPress.Z; k++)
+        {
+            var lower = ((char)('a' + (k - KeyPress.A))).ToString();
+            m[k] = (lower, lower.ToUpperInvariant(), lower, lower);
+        }
+        var digitShift = new[] { ")", "!", "\"", "#", "$", "%", "^", "&", "*", "(" };
+        for (var i = 0; i < 10; i++)
+            m[KeyPress.K0 + i] = (i.ToString(), digitShift[i], i.ToString(), i.ToString());
+        for (var i = 0; i < 10; i++)
+            m[KeyPress.NP0 + i] = (i.ToString(), i.ToString(), i.ToString(), i.ToString());
+        m[KeyPress.NP_MUL] = ("*", "*", "", "");
+        m[KeyPress.NP_DIV] = ("/", "/", "", "");
+        m[KeyPress.NP_ADD] = ("+", "+", "", "");
+        m[KeyPress.NP_SUB] = ("-", "-", "", "");
+        m[KeyPress.NP_DECIMAL] = (".", ".", "", "");
+        m[KeyPress.PERIOD] = (".", ">", "", "");
+        m[KeyPress.EQUALS] = ("=", "+", "", "");
+        m[KeyPress.COMMA] = (",", "<", "", "");
+        m[KeyPress.MINUS] = ("-", "_", "", "");
+        m[KeyPress.SPACE] = (" ", " ", "", "");
+        m[KeyPress.ENTER] = ("\n", "\n ", "\n", "\n");
+        m[KeyPress.OEM_1] = (";", ":", "", "");
+        m[KeyPress.OEM_2] = ("/", "?", "", "");
+        m[KeyPress.OEM_3] = ("'", "@", "", "");
+        m[KeyPress.OEM_4] = ("[", "{", "", "");
+        m[KeyPress.OEM_5] = ("\\", "|", "", "");
+        m[KeyPress.OEM_6] = ("]", "}", "", "");
+        m[KeyPress.OEM_7] = ("#", "~", "", "");
+        m[KeyPress.TAB] = ("\t", "\t", "\t", "\t");
+        m[KeyPress.BACK] = ("\b", "\b", "\b", "\b");
+        m[KeyPress.DEL] = ("_X", "_X", "_X", "_X");
+        m[KeyPress.LEFT] = ("_L", "_L", "_L", "_L");
+        m[KeyPress.RIGHT] = ("_R", "_R", "_R", "_R");
+        m[KeyPress.UP] = ("_U", "_U", "_U", "_U");
+        m[KeyPress.DOWN] = ("_D", "_D", "_D", "_D");
+        return m;
+    }
+
+    // O-------------------------------------------------------------------O
+    // | Built-in console (port of olc's Console* + UpdateConsole)         |
+    // O-------------------------------------------------------------------O
+
+    private KeyPress _consoleExitKey = KeyPress.ESCAPE;
+    private readonly List<string> _consoleLines = new();
+    private Vector2d<int> _consoleCursor;
+    private Vector2d<float> _consoleCharacterScale = new(1, 1);
+    private Vector2d<int> _consoleSize;
+    private readonly StringBuilder _consoleOutputBuffer = new();
+    private TextWriter _consoleOutputWriter;
+    private TextWriter _originalConsoleOut;
+
+    // A TextWriter the user (or captured stdout) writes to; UpdateConsole drains it into the buffer.
+    public TextWriter ConsoleOut() => _consoleOutputWriter ??= new StringWriter(_consoleOutputBuffer);
+    public bool IsConsoleShowing() => _consoleShow;
+
+    // Opens the console (which enables text entry); keyExit closes it, suspendTime freezes game time.
+    public void ConsoleShow(KeyPress keyExit, bool suspendTime = false)
+    {
+        if (_consoleShow) return;
+        _consoleShow = true;
+        _consoleSuspendTime = suspendTime;
+        TextEntryEnable(true);
+        _consoleExitKey = keyExit;
+        // Swallow the toggle key's edge so it doesn't immediately close the console.
+        _keyboardState[(int)keyExit].Held = false;
+        _keyboardState[(int)keyExit].Pressed = false;
+        _keyboardState[(int)keyExit].Released = true;
+    }
+
+    public void ConsoleClear() => _consoleLines.Clear();
+
+    // Redirects System.Console output into the console buffer (or restores it).
+    public void ConsoleCaptureStdOut(bool capture)
+    {
+        if (capture)
+        {
+            _originalConsoleOut = Console.Out;
+            Console.SetOut(ConsoleOut());
+        }
+        else if (_originalConsoleOut != null)
+        {
+            Console.SetOut(_originalConsoleOut);
+        }
+    }
+
+    private void UpdateConsole()
+    {
+        if (GetKey(_consoleExitKey).Pressed)
+        {
+            TextEntryEnable(false);
+            _consoleSuspendTime = false;
+            _consoleShow = false;
+            return;
+        }
+
+        // Size the console in screen characters (kept in real screen dimensions).
+        _consoleCharacterScale = new Vector2d<float>(1f / (ViewSize.X * InvScreenSize.X), 2f / (ViewSize.Y * InvScreenSize.Y));
+        _consoleSize = new Vector2d<int>(ViewSize.X / 8 - 2, ViewSize.Y / 16 - 4);
+
+        // If the console changed size, reset the line buffer.
+        if (_consoleSize.Y != _consoleLines.Count)
+        {
+            _consoleCursor = new Vector2d<int>(0, 0);
+            _consoleLines.Clear();
+            for (var i = 0; i < _consoleSize.Y; i++) _consoleLines.Add("");
+        }
+
+        // Drain queued output into the console lines.
+        if (_consoleOutputBuffer.Length > 0)
+        {
+            var output = _consoleOutputBuffer.ToString();
+            _consoleOutputBuffer.Clear();
+            foreach (var c in output) TypeCharacter(c);
+        }
+
+        // Draw the dim shadow, the buffered lines, and the input line with a cursor.
+        GradientFillRectDecal(new Vector2d<float>(0, 0), new Vector2d<float>(ScreenSize.X, ScreenSize.Y),
+            new Pixel(0, 0, 128, 128), new Pixel(0, 0, 64, 128), new Pixel(0, 0, 64, 128), new Pixel(0, 0, 64, 128));
+        SetDecalMode(DecalMode.Normal);
+        for (var line = 0; line < _consoleSize.Y && line < _consoleLines.Count; line++)
+            DrawStringDecal(new Vector2d<float>(1 * _consoleCharacterScale.X * 8f, (1 + line) * _consoleCharacterScale.Y * 8f),
+                _consoleLines[line], Pixel.WHITE, _consoleCharacterScale);
+
+        FillRectDecal(new Vector2d<float>((TextEntryGetCursor() + 2) * _consoleCharacterScale.X * 8f, _consoleSize.Y * _consoleCharacterScale.Y * 8f),
+            new Vector2d<float>(8f * _consoleCharacterScale.X, 8f * _consoleCharacterScale.Y), Pixel.DARK_CYAN);
+        DrawStringDecal(new Vector2d<float>(1 * _consoleCharacterScale.X * 8f, _consoleSize.Y * _consoleCharacterScale.Y * 8f),
+            ">" + TextEntryGetString(), Pixel.YELLOW, _consoleCharacterScale);
+    }
+
+    // Append a character to the console buffer, wrapping + scrolling as needed.
+    private void TypeCharacter(char c)
+    {
+        if (c >= 32 && c < 127)
+        {
+            _consoleLines[_consoleCursor.Y] += c;
+            _consoleCursor.X++;
+        }
+        if (c == '\n' || _consoleCursor.X >= _consoleSize.X)
+        {
+            _consoleCursor.Y++;
+            _consoleCursor.X = 0;
+        }
+        if (_consoleCursor.Y >= _consoleSize.Y)
+        {
+            _consoleCursor.Y = _consoleSize.Y - 1;
+            for (var i = 1; i < _consoleSize.Y; i++) _consoleLines[i - 1] = _consoleLines[i];
+            _consoleLines[_consoleCursor.Y] = "";
+        }
+    }
+
+    // O-------------------------------------------------------------------O
+    // | [ADVANCED] Manual render controls (port of olc's adv_*) + window  |
+    // O-------------------------------------------------------------------O
+
+    private bool _manualRenderEnable;
+
+    // When enabled, CoreUpdate stops auto-rendering layers; drive it yourself with the adv_* calls.
+    public void adv_ManualRenderEnable(bool enable) => _manualRenderEnable = enable;
+
+    // Clips/scales the hardware viewport to a sub-region of the screen.
+    public void adv_HardwareClip(bool clipAndScale, Vector2d<int> viewPos, Vector2d<int> viewSize, bool clear = false)
+    {
+        var newPosX = (float)viewPos.X / ScreenSize.X;
+        var newPosY = (float)viewPos.Y / ScreenSize.Y;
+        var newSizeX = (float)viewSize.X / ScreenSize.X;
+        var newSizeY = (float)viewSize.Y / ScreenSize.Y;
+        _renderer.UpdateViewport(
+            new Vector2d<int>(ViewPos.X + (int)(newPosX * ViewSize.X), ViewPos.Y + (int)(newPosY * ViewSize.Y)),
+            new Vector2d<int>((int)(newSizeX * ViewSize.X), (int)(newSizeY * ViewSize.Y)));
+
+        if (clear) _renderer.ClearBuffer(Pixel.BLACK, true);
+
+        SetDecalMode(DecalMode.Normal);
+        _renderer.PrepareDrawing();
+
+        InvScreenSize = clipAndScale
+            ? new Vector2d<float>(1f / ScreenSize.X, 1f / ScreenSize.Y)
+            : new Vector2d<float>(1f / viewSize.X, 1f / viewSize.Y);
+    }
+
+    // Manually renders a layer's draw target as a textured screen quad (NDC space).
+    public void adv_FlushLayer(int layerId)
+    {
+        var layer = _layers[layerId];
+        if (!layer.BShow) return;
+        if (layer.FuncHook != null) { layer.FuncHook(); return; }
+
+        _renderer.ApplyTexture((uint)layer.PDrawTarget.Decal.Id);
+        if (!_suspendTextureTransfer)
+        {
+            layer.PDrawTarget.Decal.Update();
+            layer.BUpdate = false;
+        }
+
+        var posX = layer.VOffset.X * InvScreenSize.X * 2f - 1f;
+        var posY = (layer.VOffset.Y * InvScreenSize.Y * 2f - 1f) * -1f;
+        var dimX = posX + 2f * (layer.PDrawTarget.Sprite.Width * InvScreenSize.X) * layer.VScale.X;
+        var dimY = posY - 2f * (layer.PDrawTarget.Sprite.Height * InvScreenSize.Y) * layer.VScale.Y;
+
+        var di = new DecalInstance
+        {
+            Decal = layer.PDrawTarget.Decal, Points = 4, Mode = DecalMode.Normal, Structure = DecalStructure.Fan
+        };
+        di.Pos.Add(new Vector2d<float>(posX, posY));
+        di.Pos.Add(new Vector2d<float>(posX, dimY));
+        di.Pos.Add(new Vector2d<float>(dimX, dimY));
+        di.Pos.Add(new Vector2d<float>(dimX, posY));
+        di.Uv.Add(new Vector2d<float>(0, 0));
+        di.Uv.Add(new Vector2d<float>(0, 1));
+        di.Uv.Add(new Vector2d<float>(1, 1));
+        di.Uv.Add(new Vector2d<float>(1, 0));
+        for (var i = 0; i < 4; i++) { di.W.Add(1f); di.Tint.Add(Pixel.WHITE); }
+        _renderer.DrawDecal(di);
+    }
+
+    // Manually flushes a layer's queued decal instances.
+    public void adv_FlushLayerDecals(int layerId)
+    {
+        var layer = _layers[layerId];
+        for (var k = 0; k < layer.DecalInstanceCount; k++)
+            _renderer.DrawDecal(layer.VecDecalInstance[k]);
+        layer.DecalInstanceCount = 0;
+    }
+
+    // Manually flushes a layer's queued GPU tasks (2D/3D objects).
+    public void adv_FlushLayerGPUTasks(int layerId)
+    {
+        var layer = _layers[layerId];
+        for (var k = 0; k < layer.GpuTaskCount; k++)
+            _renderer.DoGPUTask(layer.VecGPUTasks[k]);
+        layer.GpuTaskCount = 0;
+    }
+
+    // Window management passthroughs (the platform performs the actual resize/decoration).
+    public FileReadCode SetWindowSize(Vector2d<int> pos, Vector2d<int> size) => _platform.SetWindowSize(pos, size);
+    public FileReadCode ShowWindowFrame(bool showFrame = true) => _platform.ShowWindowFrame(showFrame);
 
     // Same window->pixel-space transform as the mouse, used for the file-drop point.
     private void UpdateDroppedFilesPoint(int x, int y)
