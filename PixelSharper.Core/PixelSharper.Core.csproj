@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+    <!-- Pure library output (default OutputType = Library). net8.0 is the current LTS; the floor is
+         net7.0 because the engine relies on static-abstract interface members / generic math. -->
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TargetFramework>net7.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>11</LangVersion>

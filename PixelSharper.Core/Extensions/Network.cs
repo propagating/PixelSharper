@@ -32,7 +32,7 @@ public class Message<T> where T : struct, Enum
     public void Push<TData>(TData data) where TData : unmanaged
     {
         var bytes = new byte[Unsafe.SizeOf<TData>()];
-        MemoryMarshal.Write(bytes, ref data);
+        MemoryMarshal.Write(bytes, in data); // net8: MemoryMarshal.Write's value param is 'in T'
         Body.AddRange(bytes);
         Header.Size = (uint)Body.Count;
     }

@@ -16,7 +16,6 @@ When porting a feature, find the corresponding C++ in `olcPixelGameEngine.h` and
 
 ```powershell
 dotnet build PixelSharper.sln                      # build everything
-dotnet run --project PixelSharper.Core             # run the demo Main (see caveat below)
 dotnet run --project PixelSharper.Examples         # the navigable showcase (one scene per feature)
 dotnet run --project PixelSharper.Examples -- --autotest  # cycle every showcase scene, then exit
 dotnet test                                         # run all NUnit tests
@@ -24,9 +23,9 @@ dotnet test --filter "FullyQualifiedName~SpriteTests"          # one fixture
 dotnet test --filter "Name=Constructor_Default_ShouldSetWidthAndHeightToZero"  # one test
 ```
 
-Target framework is **net7.0**, `LangVersion 11`, `Nullable` and `ImplicitUsings` enabled. .NET 7 is required because the port relies on **static abstract interface members / generic math** (`INumber<T>`), which do not exist in earlier versions. (Stray `obj/Debug/net6.0` artifacts exist but the projects target net7.0.)
+Target framework is **net8.0** (the current LTS), `LangVersion 11`, `Nullable` and `ImplicitUsings` enabled. The hard floor is **net7.0** because the port relies on **static abstract interface members / generic math** (`INumber<T>`), which don't exist earlier; net8 is chosen for the longer support window. (One net8 gotcha already handled: `MemoryMarshal.Write`'s value parameter is `in T` on net8, so `Network.cs` passes `in data`, not `ref data`.)
 
-`PixelSharper.Core` is currently an `Exe`. `Program.Main` is a throwaway harness with **hardcoded absolute paths** (`E:\Projects\...`, `C:\Users\Ryan\Desktop\...`) used to exercise the resource pack code — it is not a real entry point and will fail on other machines. Don't treat it as stable; tests are the reliable way to validate behavior.
+`PixelSharper.Core` is a **pure class library** (no `OutputType`/entry point) — it's meant to be referenced (e.g. by the NESharp emulator). `dotnet pack -c Release -o artifacts` produces a referenceable `.nupkg` (NuGet metadata in the csproj; the `OpenTK` dependency is declared so consumers resolve it). The throwaway demo `Main` that used to live here was removed; the runnable demo is now **`PixelSharper.Examples`**, and tests are the reliable way to validate behaviour.
 
 ## Architecture & conventions
 
