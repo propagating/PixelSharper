@@ -17,6 +17,8 @@ When porting a feature, find the corresponding C++ in `olcPixelGameEngine.h` and
 ```powershell
 dotnet build PixelSharper.sln                      # build everything
 dotnet run --project PixelSharper.Core             # run the demo Main (see caveat below)
+dotnet run --project PixelSharper.Examples         # the navigable showcase (one scene per feature)
+dotnet run --project PixelSharper.Examples -- --autotest  # cycle every showcase scene, then exit
 dotnet test                                         # run all NUnit tests
 dotnet test --filter "FullyQualifiedName~SpriteTests"          # one fixture
 dotnet test --filter "Name=Constructor_Default_ShouldSetWidthAndHeightToZero"  # one test
@@ -28,7 +30,7 @@ Target framework is **net7.0**, `LangVersion 11`, `Nullable` and `ImplicitUsings
 
 ## Architecture & conventions
 
-**Two projects:** `PixelSharper.Core` (engine) and `PixelSharperTests` (NUnit + coverlet). One type per file, organized by role rather than mirroring the flat C++ header:
+**Projects:** `PixelSharper.Core` (engine), `PixelSharperTests` (NUnit + coverlet), and `PixelSharper.Examples` — a navigable, scene-based **showcase** (one tutorial scene per feature in `Scenes/`, framework in `Showcase.cs`; `IExampleScene` = `Title` + `Initialise` + `Update`; `--autotest` cycles every scene and exits, used as a no-input smoke test of all scenes). The written walkthrough is `docs/TUTORIAL.md`. One type per file, organized by role rather than mirroring the flat C++ header:
 
 - `Components/` — engine objects: `Pixel`, `Sprite`, `SpritePatch`, `Decal`, `DecalPatch`, `Renderer`.
 - `Types/` — math/value types: `Vector2d<T>`, `Vertex`, `LayerDesc`, `GpuTask`.
