@@ -8,6 +8,19 @@
         <LangVersion>11</LangVersion>
     </PropertyGroup>
 
+    <!-- NuGet package metadata: `dotnet pack -c Release` produces a referenceable .nupkg whose
+         dependency on OpenTK is declared, so consumers (e.g. the NESharp emulator) resolve it. -->
+    <PropertyGroup>
+        <PackageId>PixelSharper.Core</PackageId>
+        <Version>1.0.0</Version>
+        <Authors>propagating</Authors>
+        <Description>A C# port of the olcPixelGameEngine: a software/GPU 2D+3D rendering game engine, with PGEX extensions and UTIL utilities. Subclass PixelGameEngine, override OnCreate/OnUpdate, then Construct() and Start().</Description>
+        <PackageTags>game-engine;graphics;rendering;2d;3d;olc;pixelgameengine;opentk</PackageTags>
+        <RepositoryUrl>https://github.com/propagating/PixelSharper</RepositoryUrl>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
     <ItemGroup>
       <Folder Include="Extensions\" />
     </ItemGroup>
