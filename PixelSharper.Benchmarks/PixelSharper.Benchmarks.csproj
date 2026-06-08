@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Internal-only micro-benchmarks. Never packed or published (IsPackable=false), and not
+         referenced by Core/Examples, so packing PixelSharper.Core never touches it.
+         Run in Release: dotnet run -c Release in this project directory. -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>11</LangVersion>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\PixelSharper.Core\PixelSharper.Core.csproj" />
+    </ItemGroup>
+
+</Project>

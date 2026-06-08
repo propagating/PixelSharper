@@ -176,48 +176,41 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> Min(Vector2d<T> a, Vector2d<T> b)
     {
-        return new Vector2d<T>(
-            T.CreateChecked(Math.Min(Convert.ToDouble(a.X), Convert.ToDouble(b.X))),
-            T.CreateChecked(Math.Min(Convert.ToDouble(a.Y), Convert.ToDouble(b.Y)))
-        );
+        // Entirely in T (INumber<T>.Min) — no double round-trip, no boxing.
+        return new Vector2d<T>(T.Min(a.X, b.X), T.Min(a.Y, b.Y));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> Max(Vector2d<T> a, Vector2d<T> b)
     {
-        return new Vector2d<T>(
-            T.CreateChecked(Math.Max(Convert.ToDouble(a.X), Convert.ToDouble(b.X))),
-            T.CreateChecked(Math.Max(Convert.ToDouble(a.Y), Convert.ToDouble(b.Y)))
-        );
+        // Entirely in T (INumber<T>.Max) — no double round-trip, no boxing.
+        return new Vector2d<T>(T.Max(a.X, b.X), T.Max(a.Y, b.Y));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (T r, T theta) ToPolar()
     {
         double r = MagnitudeAsDouble();
-        double theta = Math.Atan2(Convert.ToDouble(Y), Convert.ToDouble(X));
-        return (T.CreateChecked(ConvertToT(r)), T.CreateChecked(ConvertToT(theta)));
+        double theta = Math.Atan2(double.CreateChecked(Y), double.CreateChecked(X));
+        return (T.CreateChecked(r), T.CreateChecked(theta));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> FromPolar(T r, T theta)
     {
-        double rDouble = Convert.ToDouble(r);
-        double thetaDouble = Convert.ToDouble(theta);
-        T x = T.CreateChecked(ConvertToT(rDouble * Math.Cos(thetaDouble)));
-        T y = T.CreateChecked(ConvertToT(rDouble * Math.Sin(thetaDouble)));
+        double rDouble = double.CreateChecked(r);
+        double thetaDouble = double.CreateChecked(theta);
+        T x = T.CreateChecked(rDouble * Math.Cos(thetaDouble));
+        T y = T.CreateChecked(rDouble * Math.Sin(thetaDouble));
         return new Vector2d<T>(x, y);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2d<T> Clamp(Vector2d<T> min, Vector2d<T> max)
     {
-        // Clamp each component to [min, max] (the previous version only applied the lower bound
-        // to X and the upper bound to Y — a bug the existing test happened not to catch).
-        return new Vector2d<T>(
-            T.CreateChecked(Math.Min(Math.Max(Convert.ToDouble(X), Convert.ToDouble(min.X)), Convert.ToDouble(max.X))),
-            T.CreateChecked(Math.Min(Math.Max(Convert.ToDouble(Y), Convert.ToDouble(min.Y)), Convert.ToDouble(max.Y)))
-        );
+        // Clamp each component to [min, max], entirely in T (INumber<T>.Clamp) — no double, no boxing.
+        // (Also keeps the fix for the original bug where only X's lower and Y's upper bound applied.)
+        return new Vector2d<T>(T.Clamp(X, min.X, max.X), T.Clamp(Y, min.Y, max.Y));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -240,7 +233,9 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private double MagnitudeAsDouble()
     {
-        return Math.Sqrt(Convert.ToDouble(X) * Convert.ToDouble(X) + Convert.ToDouble(Y) * Convert.ToDouble(Y));
+        // double.CreateChecked converts T->double without boxing (was Convert.ToDouble, which boxed).
+        double x = double.CreateChecked(X), y = double.CreateChecked(Y);
+        return Math.Sqrt(x * x + y * y);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -256,8 +251,8 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double Distance(Vector2d<T> a, Vector2d<T> b)
     {
-        //unfortunately Math.Sqrt only works with double and we cannot do this without boxing distance squared
-        return Math.Sqrt(Convert.ToDouble(DistanceSquared(a, b)));
+        // Sqrt needs double; double.CreateChecked converts T->double without boxing.
+        return Math.Sqrt(double.CreateChecked(DistanceSquared(a, b)));
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -291,12 +286,6 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     #endregion
     
     #region interface methods
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static T ConvertToT(double value)
-    {
-        return (T)Convert.ChangeType(value, typeof(T));
-    }
-
     public override string ToString() => $"({X}, {Y})";
 
     public override bool Equals(object obj)
