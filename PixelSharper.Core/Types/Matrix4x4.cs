@@ -1,28 +1,31 @@
 using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using SnMatrix = System.Numerics.Matrix4x4;
+using SnVector4 = System.Numerics.Vector4;
 
 namespace PixelSharper.Core.Types;
 
-// Port of olc::m_4d (float — olc's mf4d). A column-major 4x4 matrix (flat index = col*4 + row, to
-// mirror OpenGL) used for HW3D model/view/projection transforms. **Value type** with 16 inline float
-// fields — factory methods and operators return fresh instances, and there is no per-operation heap
-// allocation (the old class allocated a float[16] every time). Default ctor = identity; note that
-// `default(Matrix4x4)` is all-zeros, so always build via `new Matrix4x4()` or the factory methods.
-[StructLayout(LayoutKind.Sequential)]
+// Port of olc::m_4d (float — olc's mf4d). A column-major 4x4 matrix (flat index = col*4 + row, to mirror
+// OpenGL) used for HW3D model/view/projection transforms. **Value type, backed by System.Numerics for
+// SIMD.** The backing _sn holds the TRANSPOSE of our logical matrix — which means _sn's raw row-major
+// floats (M11..M44) are *exactly* our column-major data, so our indexer / ToArray / factory methods read
+// and write the same bytes unchanged, while the hot multiply and vector transform route through
+// System.Numerics' hardware-accelerated ops. Default ctor = identity; `default(Matrix4x4)` is all-zeros,
+// so always build via `new Matrix4x4()` or the factory methods.
 public struct Matrix4x4
 {
-    // 16 contiguous floats in column-major order (flat index col*4 + row). Sequential layout lets us
-    // index them as a block via Unsafe.Add(ref _m0, i) — same idea as the Pixel union.
-    private float _m0, _m1, _m2, _m3, _m4, _m5, _m6, _m7, _m8, _m9, _m10, _m11, _m12, _m13, _m14, _m15;
+    // Holds our-matrix^T. Its row-major M11..M44 == our column-major flat (col*4 + row), so we reinterpret
+    // it as 16 floats for element access; multiply/transform use its SIMD operators directly.
+    private SnMatrix _sn;
 
-    public Matrix4x4() { _m0 = _m5 = _m10 = _m15 = 1f; }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private float GetFlat(int i) => Unsafe.Add(ref _m0, i);
+    public Matrix4x4() { _sn = SnMatrix.Identity; }
+    private Matrix4x4(SnMatrix sn) { _sn = sn; }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void SetFlat(int i, float v) => Unsafe.Add(ref _m0, i) = v;
+    private float GetFlat(int i) => Unsafe.Add(ref Unsafe.As<SnMatrix, float>(ref _sn), i);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void SetFlat(int i, float v) => Unsafe.Add(ref Unsafe.As<SnMatrix, float>(ref _sn), i) = v;
 
     private static int Idx(int c, int r) => c * 4 + r;
     public float this[int c, int r]
@@ -157,19 +160,14 @@ public struct Matrix4x4
         return o;
     }
 
-    // Transform a vector (homogeneous, includes the w row).
-    public static Vector3d operator *(Matrix4x4 me, Vector3d v) => new(
-        me[0, 0] * v.X + me[1, 0] * v.Y + me[2, 0] * v.Z + me[3, 0] * v.W,
-        me[0, 1] * v.X + me[1, 1] * v.Y + me[2, 1] * v.Z + me[3, 1] * v.W,
-        me[0, 2] * v.X + me[1, 2] * v.Y + me[2, 2] * v.Z + me[3, 2] * v.W,
-        me[0, 3] * v.X + me[1, 3] * v.Y + me[2, 3] * v.Z + me[3, 3] * v.W);
-
-    public static Matrix4x4 operator *(Matrix4x4 a, Matrix4x4 b)
+    // Transform a vector (homogeneous, includes the w row). _sn = M^T, so v * M^T (row-vector) == M * v.
+    public static Vector3d operator *(Matrix4x4 me, Vector3d v)
     {
-        var o = new Matrix4x4();
-        for (var c = 0; c < 4; c++)
-            for (var r = 0; r < 4; r++)
-                o[c, r] = a[0, r] * b[c, 0] + a[1, r] * b[c, 1] + a[2, r] * b[c, 2] + a[3, r] * b[c, 3];
-        return o;
+        var t = SnVector4.Transform(new SnVector4(v.X, v.Y, v.Z, v.W), me._sn);
+        return new Vector3d(t.X, t.Y, t.Z, t.W);
     }
+
+    // Our column-vector product A*B applies B then A (= standard A·B). With _sn = M^T this is
+    // (A·B)^T = B^T · A^T = b._sn * a._sn (System.Numerics SIMD multiply, operands reversed).
+    public static Matrix4x4 operator *(Matrix4x4 a, Matrix4x4 b) => new(b._sn * a._sn);
 }
