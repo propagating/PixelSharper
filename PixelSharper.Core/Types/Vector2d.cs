@@ -10,29 +10,14 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
 
     public Vector2d(T x, T y)
     {
-        // Ensure X and Y are valid numeric types
-        if (!IsValidNumeric(x) || !IsValidNumeric(y))
-            throw new ArgumentException("X and Y must be valid numeric types.");
-
+        // No runtime validation needed: the `where T : INumber<T>` constraint already guarantees, at
+        // compile time, that T is a valid number — so the old IsValidNumeric check could never fail and
+        // only kept the ctor from inlining. Just store the components.
         X = x;
         Y = y;
     }
 
     #region validation
-    private static bool IsValidNumeric<U>(U value) where U : struct, INumber<U>
-    {
-        try
-        {
-            var _ = U.One; // Accessing INumber interface property triggers a compile-time check
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsPositive(T value) => value > T.Zero;
     
