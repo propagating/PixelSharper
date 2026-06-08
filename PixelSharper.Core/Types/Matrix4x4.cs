@@ -1,25 +1,43 @@
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace PixelSharper.Core.Types;
 
 // Port of olc::m_4d (float — olc's mf4d). A column-major 4x4 matrix (flat index = col*4 + row, to
-// mirror OpenGL) used for HW3D model/view/projection transforms. Reference type: factory methods
-// and operators return fresh instances (so transform chains don't alias). Default ctor = identity.
-public class Matrix4x4
+// mirror OpenGL) used for HW3D model/view/projection transforms. **Value type** with 16 inline float
+// fields — factory methods and operators return fresh instances, and there is no per-operation heap
+// allocation (the old class allocated a float[16] every time). Default ctor = identity; note that
+// `default(Matrix4x4)` is all-zeros, so always build via `new Matrix4x4()` or the factory methods.
+[StructLayout(LayoutKind.Sequential)]
+public struct Matrix4x4
 {
-    private readonly float[] _m = new float[16];
+    // 16 contiguous floats in column-major order (flat index col*4 + row). Sequential layout lets us
+    // index them as a block via Unsafe.Add(ref _m0, i) — same idea as the Pixel union.
+    private float _m0, _m1, _m2, _m3, _m4, _m5, _m6, _m7, _m8, _m9, _m10, _m11, _m12, _m13, _m14, _m15;
 
-    public Matrix4x4() { _m[0] = _m[5] = _m[10] = _m[15] = 1f; }
+    public Matrix4x4() { _m0 = _m5 = _m10 = _m15 = 1f; }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private float GetFlat(int i) => Unsafe.Add(ref _m0, i);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void SetFlat(int i, float v) => Unsafe.Add(ref _m0, i) = v;
 
     private static int Idx(int c, int r) => c * 4 + r;
     public float this[int c, int r]
     {
-        get => _m[Idx(c, r)];
-        set => _m[Idx(c, r)] = value;
+        get => GetFlat(Idx(c, r));
+        set => SetFlat(Idx(c, r), value);
     }
 
     // Flat (column-major) accessor as a float[16] — e.g. for HW3D_Projection / GPUTask.Mvp.
-    public float[] ToArray() => (float[])_m.Clone();
+    public float[] ToArray()
+    {
+        var a = new float[16];
+        for (var i = 0; i < 16; i++) a[i] = GetFlat(i);
+        return a;
+    }
 
     public static Matrix4x4 Translation(float x, float y, float z)
     {
@@ -113,9 +131,8 @@ public class Matrix4x4
     // Full general inverse (gluInvertMatrix). Costly — avoid per-frame use.
     public Matrix4x4 Invert()
     {
-        var o = new Matrix4x4();
-        var m = _m;
-        var r = o._m;
+        var m = ToArray();      // local column-major copy
+        var r = new float[16];
         r[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
         r[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
         r[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
@@ -135,7 +152,8 @@ public class Matrix4x4
 
         var det = m[0] * r[0] + m[1] * r[4] + m[2] * r[8] + m[3] * r[12];
         var invdet = 1f / det;
-        for (var i = 0; i < 16; i++) r[i] *= invdet;
+        var o = new Matrix4x4();
+        for (var i = 0; i < 16; i++) o.SetFlat(i, r[i] * invdet);
         return o;
     }
 
