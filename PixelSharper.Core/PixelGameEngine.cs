@@ -1156,6 +1156,21 @@ public abstract class PixelGameEngine
         y = Math.Clamp(y, 0, dh);
         y2 = Math.Clamp(y2, 0, dh);
 
+        var rowW = x2 - x;
+        if (rowW <= 0 || y2 <= y) return;
+
+        // Fast path: in Normal mode (or Mask with a fully-opaque pixel) a fill is a pure overwrite, so
+        // fill each destination row in one vectorised Span.Fill instead of per-pixel Draw().
+        var target = GetDrawTarget();
+        if (target != null && (_pixelMode == PixelDisplayMode.Normal ||
+                               (_pixelMode == PixelDisplayMode.Mask && p.Alpha == 255)))
+        {
+            var buf = CollectionsMarshal.AsSpan(target.PixelData);
+            for (var j = y; j < y2; j++)
+                buf.Slice(j * dw + x, rowW).Fill(p);
+            return;
+        }
+
         for (var i = x; i < x2; i++)
             for (var j = y; j < y2; j++)
                 Draw(i, j, p);
@@ -1300,6 +1315,27 @@ public abstract class PixelGameEngine
     public void DrawSprite(int x, int y, Sprite sprite, int scale = 1, SpriteMirrorMode flip = SpriteMirrorMode.None)
     {
         if (sprite == null) return;
+
+        // Fast path: a 1:1, unflipped, overwrite (Normal-mode) blit copies whole rows via Span.CopyTo
+        // (a vectorised memmove) instead of plotting each pixel through Draw().
+        var blitTarget = GetDrawTarget();
+        if (blitTarget != null && scale == 1 && flip == SpriteMirrorMode.None && _pixelMode == PixelDisplayMode.Normal)
+        {
+            int dw = blitTarget.Width, dh = blitTarget.Height;
+            var dst = CollectionsMarshal.AsSpan(blitTarget.PixelData);
+            var src = CollectionsMarshal.AsSpan(sprite.PixelData);
+            var cx0 = Math.Max(0, x);                       // clip the destination x range...
+            var cx1 = Math.Min(dw, x + sprite.Width);
+            var len = cx1 - cx0;
+            if (len > 0)
+                for (var j = 0; j < sprite.Height; j++)
+                {
+                    var dy = y + j;
+                    if (dy < 0 || dy >= dh) continue;       // ...and the row
+                    src.Slice(j * sprite.Width + (cx0 - x), len).CopyTo(dst.Slice(dy * dw + cx0, len));
+                }
+            return;
+        }
 
         int fxs = 0, fxm = 1, fx;
         int fys = 0, fym = 1, fy;
