@@ -33,4 +33,17 @@ public class DrawBenchmarks
 
     [Benchmark] public void DrawSprite_Span() { _e.SetPixelMode(PixelDisplayMode.Normal); _e.DrawSprite(10, 10, _sprite); }
     [Benchmark] public void DrawSprite_PerPixel() { _e.SetPixelMode((x, y, n, o) => n); _e.DrawSprite(10, 10, _sprite); }
+
+    private static readonly Pixel Translucent = new(200, 50, 10, 128);
+    [Benchmark] public void FillRect_Alpha_Span() { _e.SetPixelMode(PixelDisplayMode.Alpha); _e.FillRect(0, 0, 256, 240, Translucent); }
+    [Benchmark]
+    public void FillRect_Alpha_PerPixel()
+    {
+        _e.SetPixelMode((x, y, n, o) =>
+        {
+            var a = n.Alpha / 255f; var c = 1f - a;
+            return new Pixel((byte)(a * n.Red + c * o.Red), (byte)(a * n.Green + c * o.Green), (byte)(a * n.Blue + c * o.Blue));
+        });
+        _e.FillRect(0, 0, 256, 240, Translucent);
+    }
 }

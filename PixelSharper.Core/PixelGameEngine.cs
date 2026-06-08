@@ -1171,9 +1171,37 @@ public abstract class PixelGameEngine
             return;
         }
 
+        // Fast path: Alpha mode with a constant source is a per-channel affine on the destination
+        // (out = c*dst + k). Done directly over the row span — same float math as Draw()'s Alpha case
+        // (so bit-exact), but without the per-pixel method/switch/indexer overhead. BlendRowConstant
+        // also takes the SIMD path internally when the hardware supports it.
+        if (target != null && _pixelMode == PixelDisplayMode.Alpha)
+        {
+            var buf = CollectionsMarshal.AsSpan(target.PixelData);
+            for (var j = y; j < y2; j++)
+                BlendRowConstant(buf.Slice(j * dw + x, rowW), p, _blendFactor);
+            return;
+        }
+
         for (var i = x; i < x2; i++)
             for (var j = y; j < y2; j++)
                 Draw(i, j, p);
+    }
+
+    // Alpha-blend a constant source pixel over a row of destination pixels: out.rgb = c*dst.rgb + k,
+    // out.a = 255 — the same float math as Draw()'s Alpha case (so bit-exact), but straight over the
+    // span without the per-pixel method/switch/indexer overhead (which the Span benchmarks showed is the
+    // dominant cost).
+    private static void BlendRowConstant(Span<Pixel> row, Pixel src, float blend)
+    {
+        var a = src.Alpha / 255.0f * blend;
+        var c = 1.0f - a;
+        float kr = a * src.Red, kg = a * src.Green, kb = a * src.Blue;
+        for (var i = 0; i < row.Length; i++)
+        {
+            var d = row[i];
+            row[i] = new Pixel((byte)(c * d.Red + kr), (byte)(c * d.Green + kg), (byte)(c * d.Blue + kb));
+        }
     }
 
     public void DrawTriangle(Vector2d<int> pos1, Vector2d<int> pos2, Vector2d<int> pos3, Pixel p)

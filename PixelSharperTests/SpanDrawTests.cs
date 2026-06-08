@@ -93,6 +93,28 @@ namespace PixelSharperTests
         }
 
         [Test]
+        public void FillRect_Alpha_MatchesPerPixelDraw()
+        {
+            var src = new Pixel(200, 50, 10, 128);
+
+            // Reference: blend src over the background at one pixel via the per-pixel Draw() Alpha path.
+            var (e1, t1) = NewTarget(4, 4);
+            e1.SetPixelMode(PixelDisplayMode.Alpha);
+            e1.Draw(1, 1, src);
+
+            // The FillRect span blend over the whole target must produce the same pixel.
+            var (e2, t2) = NewTarget(4, 4);
+            e2.SetPixelMode(PixelDisplayMode.Alpha);
+            e2.FillRect(0, 0, 4, 4, src);
+            Assert.AreEqual(t1.PixelData[5].N, t2.PixelData[5].N, "first blend matches per-pixel Draw");
+
+            // And blending a second time (over a non-background value) must still match.
+            e1.Draw(1, 1, src);
+            e2.FillRect(0, 0, 4, 4, src);
+            Assert.AreEqual(t1.PixelData[5].N, t2.PixelData[5].N, "second blend matches");
+        }
+
+        [Test]
         public void DrawSprite_ClipsLeftTopAndRightBottom()
         {
             var (e, t) = NewTarget(8, 8);
