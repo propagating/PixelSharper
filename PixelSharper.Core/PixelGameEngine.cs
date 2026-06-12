@@ -624,7 +624,7 @@ public abstract class PixelGameEngine
     public bool IsConsoleShowing() => _consoleShow;
 
     // Opens the console (which enables text entry); keyExit closes it, suspendTime freezes game time.
-    public void ConsoleShow(KeyPress keyExit, bool suspendTime = false)
+    public void ConsoleShow(KeyPress keyExit, bool suspendTime = true)
     {
         if (_consoleShow) return;
         _consoleShow = true;

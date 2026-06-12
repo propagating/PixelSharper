@@ -43,7 +43,12 @@ public struct Rect<T> where T : struct, INumber<T>, IEquatable<T>, IComparable<T
 {
     public Vector2d<T> Pos;
     public Vector2d<T> Size;
-    public Rect(Vector2d<T> pos = default, Vector2d<T> size = default) { Pos = pos; Size = size; }
+    public Rect(Vector2d<T> pos, Vector2d<T> size) { Pos = pos; Size = size; }
+
+    // olc defaults: pos = {0,0}, size = {1,1}. {1,1} isn't a compile-time constant, so these
+    // are expressed as overloads rather than C# default parameters.
+    public Rect(Vector2d<T> pos) : this(pos, new Vector2d<T>(T.One, T.One)) { }
+    public Rect() : this(default, new Vector2d<T>(T.One, T.One)) { }
 
     public Vector2d<T> Middle() => Pos + Size / T.CreateChecked(2);
     public Line<T> Top() => new(Pos, new Vector2d<T>(Pos.X + Size.X, Pos.Y));
