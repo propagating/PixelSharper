@@ -8,13 +8,24 @@ namespace PixelSharper.Examples.Scenes;
 // ---------------------------------------------------------------------------------------------
 // Palette — an interpolated colour ramp, sampled continuously.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the Palette utility: a small stock palette interpolated into a continuous gradient via Sample.</summary>
+/// <remarks>Exercises the <see cref="Palette"/> utility: a <see cref="Palette.Stock"/> ramp sampled at continuous <c>t</c> in <c>[0,1]</c>.</remarks>
+/// <seealso cref="Palette"/>
 public class PaletteScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Palette (interpolated)"</c>.</value>
     public string Title => "Palette (interpolated)";
+    /// <summary>The interpolated colour palette being sampled.</summary>
     private Palette _pal = null!;
 
+    /// <summary>Builds a palette from the stock Spectrum ramp.</summary>
+    /// <param name="e">The host showcase engine (unused; the palette is built from a stock ramp).</param>
     public void Initialise(Showcase e) => _pal = new Palette(Palette.Stock.Spectrum);
 
+    /// <summary>Draws the palette as a smooth horizontal gradient band.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and drawing the gradient band.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; this scene is static).</param>
     public void Update(Showcase e, float dt)
     {
         e.DrawString(4, e.CanvasTop + 2, "A small palette interpolated into a smooth gradient.", Pixel.WHITE);
@@ -29,13 +40,23 @@ public class PaletteScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // Camera2D — a camera that eases to follow a moving target (the view scrolls).
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the Camera2D utility in LazyFollow mode easing to chase a moving target through a scrolling world.</summary>
+/// <remarks>Exercises the <see cref="Camera2D"/> utility in <see cref="Camera2D.Mode.LazyFollow"/> mode; world landmarks are projected into screen space relative to the camera's view position.</remarks>
+/// <seealso cref="Camera2D"/>
 public class Camera2DScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Camera2D (follow)"</c>.</value>
     public string Title => "Camera2D (follow)";
+    /// <summary>The follow camera.</summary>
     private Camera2D _cam = null!;
+    /// <summary>Static world landmarks rendered relative to the camera.</summary>
     private readonly List<Vector2d<float>> _landmarks = new();
+    /// <summary>Accumulated time, driving the target's orbit.</summary>
     private float _t;
 
+    /// <summary>Creates the LazyFollow camera and scatters random landmarks.</summary>
+    /// <param name="e">The host showcase engine, queried for screen/canvas size to size the camera and scatter landmarks.</param>
     public void Initialise(Showcase e)
     {
         _cam = new Camera2D(new Vector2d<float>(e.ScreenWidth(), e.CanvasHeight));
@@ -45,6 +66,9 @@ public class Camera2DScene : IExampleScene
         for (var i = 0; i < 40; i++) _landmarks.Add(new Vector2d<float>(rnd.Next(-100, 400), rnd.Next(-100, 400)));
     }
 
+    /// <summary>Moves the target, updates the camera, and draws landmarks and target in camera-relative screen space.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and drawing.</param>
+    /// <param name="dt">Seconds since the previous frame; accumulated into <c>_t</c> to orbit the target and forwarded to the camera's eased update.</param>
     public void Update(Showcase e, float dt)
     {
         _t += dt;
@@ -71,12 +95,22 @@ public class Camera2DScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // Geometry2D — shape relations (contains / closest) driven by the mouse.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the Geometry2D utility: Geom2D.Contains and Geom2D.Closest relations driven by the mouse position.</summary>
+/// <remarks>Exercises the <see cref="Geom2D"/> shape relations against <see cref="Circle{T}"/> and <see cref="Rect{T}"/> shapes at the live mouse position.</remarks>
+/// <seealso cref="Geom2D"/>
 public class Geometry2DScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Geometry2D"</c>.</value>
     public string Title => "Geometry2D";
 
+    /// <summary>No resources to build.</summary>
+    /// <param name="e">The host showcase engine (unused; no resources are created).</param>
     public void Initialise(Showcase e) { }
 
+    /// <summary>Tests a circle and rect for mouse containment and draws the closest point on the circle.</summary>
+    /// <param name="e">The host showcase engine used to poll the mouse and draw the shapes.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; this scene is driven by the mouse).</param>
     public void Update(Showcase e, float dt)
     {
         e.DrawString(4, e.CanvasTop + 2, "Contains() tests + Closest() point, against the mouse.", Pixel.WHITE);
@@ -99,12 +133,21 @@ public class Geometry2DScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // QuadTree — a spatial index; query the region under the mouse.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the QuadTreeContainer spatial index: inserting points and querying only those within the mouse region.</summary>
+/// <remarks>Exercises the <see cref="QuadTreeContainer{T}"/> spatial index: 250 points are inserted, then only those overlapping the mouse query rect are returned.</remarks>
+/// <seealso cref="QuadTreeContainer{T}"/>
 public class QuadTreeScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"QuadTree (spatial index)"</c>.</value>
     public string Title => "QuadTree (spatial index)";
+    /// <summary>The spatial index over the scattered points.</summary>
     private QuadTreeContainer<int> _qt = null!;
+    /// <summary>The indexed point positions, keyed by their id.</summary>
     private readonly List<Vector2d<float>> _pts = new();
 
+    /// <summary>Scatters 250 random points and inserts them into the quad tree.</summary>
+    /// <param name="e">The host showcase engine, queried for screen/canvas size to bound the quad tree and scatter points.</param>
     public void Initialise(Showcase e)
     {
         _qt = new QuadTreeContainer<int>(new Rect<float>(
@@ -119,6 +162,9 @@ public class QuadTreeScene : IExampleScene
         }
     }
 
+    /// <summary>Draws all points and highlights those returned by a quad-tree search of the mouse region.</summary>
+    /// <param name="e">The host showcase engine used to poll the mouse, draw the points, and report the hit count.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; this scene is driven by the mouse).</param>
     public void Update(Showcase e, float dt)
     {
         e.DrawString(4, e.CanvasTop + 2, "250 points indexed; the tree returns only nearby ones.", Pixel.WHITE);
@@ -136,11 +182,19 @@ public class QuadTreeScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // DataFile — serialise a key/value tree to disk and read it straight back.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the DataFile utility: writing a nested key/value tree to disk and reading it straight back.</summary>
+/// <remarks>Exercises the <see cref="DataFile"/> utility round-trip via <see cref="DataFile.Write"/> and <see cref="DataFile.Read"/>, including quoting of values containing the list separator.</remarks>
+/// <seealso cref="DataFile"/>
 public class DataFileScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"DataFile (serialisation)"</c>.</value>
     public string Title => "DataFile (serialisation)";
+    /// <summary>The round-tripped values formatted for display.</summary>
     private string[] _lines = Array.Empty<string>();
 
+    /// <summary>Builds, writes, and re-reads a DataFile, capturing the round-tripped values.</summary>
+    /// <param name="e">The host showcase engine (unused; the round-trip uses a temp file independent of the engine).</param>
     public void Initialise(Showcase e)
     {
         var df = new DataFile();
@@ -165,6 +219,9 @@ public class DataFileScene : IExampleScene
         };
     }
 
+    /// <summary>Draws the round-tripped key/value lines.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and drawing the captured lines.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; this scene is static).</param>
     public void Update(Showcase e, float dt)
     {
         e.DrawString(4, e.CanvasTop + 2, "Wrote a nested key/value tree to disk and read it back:", Pixel.WHITE);

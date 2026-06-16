@@ -4,9 +4,11 @@ using PixelSharper.Core.Types;
 
 namespace PixelSharper.Examples.Scenes;
 
+/// <summary>Shared art helpers used across multiple demo scenes.</summary>
 internal static class DemoArt
 {
-    // Shared 8x8 checker sprite used by several scenes.
+    /// <summary>Builds the shared 8x8 magenta-bordered checker sprite used by several scenes.</summary>
+    /// <returns>A new 8x8 <see cref="Sprite"/> with a magenta border framing a white/dark-grey checker.</returns>
     public static Sprite Checker()
     {
         var s = new Sprite(8, 8);
@@ -23,14 +25,26 @@ internal static class DemoArt
 // ---------------------------------------------------------------------------------------------
 // Decals — GPU-textured quads: scaled, rotated, gradient-filled, plus text decals.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the GPU decal path: DrawDecal, DrawRotatedDecal, GradientFillRectDecal, and DrawStringDecal.</summary>
+/// <remarks>Exercises the hardware-textured-quad decal API; unlike the CPU primitives, decals scale and rotate smoothly on the GPU.</remarks>
+/// <seealso cref="Decal"/>
 public class DecalsScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Decals (GPU path)"</c>.</value>
     public string Title => "Decals (GPU path)";
+    /// <summary>The checker decal uploaded to the GPU.</summary>
     private Decal _decal = null!;
+    /// <summary>Accumulated time, driving the rotation.</summary>
     private float _t;
 
+    /// <summary>Creates the decal from the shared checker sprite.</summary>
+    /// <param name="e">The host showcase engine (unused; the decal is built from <see cref="DemoArt.Checker"/>).</param>
     public void Initialise(Showcase e) => _decal = new Decal(DemoArt.Checker());
 
+    /// <summary>Draws scaled, rotated, gradient, and text decals.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and decal drawing.</param>
+    /// <param name="dt">Seconds since the previous frame; accumulated into <c>_t</c> to drive the rotation.</param>
     public void Update(Showcase e, float dt)
     {
         _t += dt;
@@ -51,13 +65,25 @@ public class DecalsScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // Input — poll keyboard + mouse; paint with the mouse.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates polling keyboard (GetKey) and mouse (GetMouse/GetMousePos/GetMouseWheel) and painting a mouse trail.</summary>
+/// <remarks>Exercises the pull-model input API: <see cref="PixelSharper.Core.PixelGameEngine.GetKey(KeyPress)"/>, <see cref="PixelSharper.Core.PixelGameEngine.GetMouse(int)"/>, and the mouse position/wheel accessors.</remarks>
+/// <seealso cref="KeyPress"/>
+/// <seealso cref="Mouse"/>
 public class InputScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Input"</c>.</value>
     public string Title => "Input";
+    /// <summary>Painted mouse-trail points.</summary>
     private readonly List<Vector2d<int>> _trail = new();
 
+    /// <summary>Clears the mouse trail.</summary>
+    /// <param name="e">The host showcase engine (unused; only the trail buffer is reset).</param>
     public void Initialise(Showcase e) => _trail.Clear();
 
+    /// <summary>Draws key/mouse state pads and extends the painted trail while the left button is held.</summary>
+    /// <param name="e">The host showcase engine used to poll input and draw.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; the trail is driven by input, not time).</param>
     public void Update(Showcase e, float dt)
     {
         var y = e.CanvasTop + 4;
@@ -81,6 +107,12 @@ public class InputScene : IExampleScene
         e.DrawString(4, e.CanvasBottom - 8, "Hold the left mouse button to paint a trail.", Pixel.GREY);
     }
 
+    /// <summary>Draws a labelled key-state pad that lights up while the given key is held.</summary>
+    /// <param name="e">The host showcase engine used to poll the key and draw the pad.</param>
+    /// <param name="label">The single-character caption drawn on the pad.</param>
+    /// <param name="k">The key whose held state colours the pad.</param>
+    /// <param name="x">The pad's left x coordinate.</param>
+    /// <param name="y">The pad's top y coordinate.</param>
     private static void Key(Showcase e, string label, KeyPress k, int x, int y)
     {
         var down = e.GetKey(k).Held;
@@ -92,12 +124,22 @@ public class InputScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // Pixel modes — Normal (overwrite), Mask (skip fully-transparent), Alpha (blend).
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates SetPixelMode: Normal overwrite versus Alpha blending of pixels into the buffer.</summary>
+/// <remarks>Exercises <see cref="PixelSharper.Core.PixelGameEngine.SetPixelMode(PixelDisplayMode)"/> with <see cref="PixelDisplayMode.Normal"/> and <see cref="PixelDisplayMode.Alpha"/>.</remarks>
+/// <seealso cref="PixelDisplayMode"/>
 public class PixelModesScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Pixel Modes and Blending"</c>.</value>
     public string Title => "Pixel Modes & Blending";
 
+    /// <summary>No resources to build.</summary>
+    /// <param name="e">The host showcase engine (unused; no resources are created).</param>
     public void Initialise(Showcase e) { }
 
+    /// <summary>Draws overlapping boxes under Normal and Alpha pixel modes.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics, pixel-mode switching, and drawing.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; this scene is static).</param>
     public void Update(Showcase e, float dt)
     {
         var y = e.CanvasTop + 6;

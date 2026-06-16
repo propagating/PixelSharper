@@ -4,21 +4,35 @@ using PixelSharper.Core.Types;
 
 namespace PixelSharper.Core.Extensions;
 
-// Port of olcPGEX_SplashScreen — an animated OLC splash + copyright notice (for OLC-3 compliance).
-// Auto-hooks (base ctor hook:true) and blocks the user's OnUpdate until the animation completes.
+/// <summary>
+/// Port of olcPGEX_SplashScreen — an animated OLC splash + copyright notice (for OLC-3 compliance).
+/// Auto-hooks (base ctor hook:true) and blocks the user's OnUpdate until the animation completes.
+/// </summary>
 public class SplashScreen : PGEX
 {
+    /// <summary>Renderable holding the decoded OLC logo sprite and its decal.</summary>
     private readonly Renderable _spr = new();
+    /// <summary>Per-pixel particle state (position + velocity) for the explode animation.</summary>
     private (Vector2d<float> Pos, Vector2d<float> Vel)[] _boom = System.Array.Empty<(Vector2d<float>, Vector2d<float>)>();
+    /// <summary>Logo render scale derived from the screen width.</summary>
     private Vector2d<float> _scale;
+    /// <summary>Initial top-left position of the logo on screen.</summary>
     private Vector2d<float> _position;
+    /// <summary>Elapsed animation time, in seconds.</summary>
     private float _particleTime;
+    /// <summary>Screen aspect ratio used to keep the logo square.</summary>
     private float _aspect;
+    /// <summary>True once the animation has finished and the splash should stop blocking.</summary>
     private bool _complete;
+    /// <summary>Random source for particle jitter and velocities.</summary>
     private readonly Random _rng = new();
 
+    /// <summary>Creates the splash screen and auto-registers it as a hooked extension.</summary>
+    /// <remarks>Passes <c>hook:true</c> to the <see cref="PGEX"/> base so the engine drives this
+    /// extension's lifecycle hooks (notably <see cref="OnAfterUserCreate"/> and <see cref="OnBeforeUserUpdate"/>).</remarks>
     public SplashScreen() : base(true) { }
 
+    /// <summary>Builds the OLC logo sprite and decal once, after the user's OnCreate; invoked by the engine because this PGEX hooked itself.</summary>
     protected internal override void OnAfterUserCreate()
     {
         const string logo =
@@ -80,6 +94,13 @@ public class SplashScreen : PGEX
                 new Vector2d<float>((float)_rng.NextDouble() * 10.0f - 5.0f, (float)_rng.NextDouble() * 10.0f - 5.0f));
     }
 
+    /// <summary>Advances and renders the splash animation each frame; returns true to block the user update until complete.</summary>
+    /// <param name="elapsedTime">Frame delta in seconds, passed by reference per the <see cref="PGEX"/> hook contract; used to integrate particle motion.</param>
+    /// <returns><c>true</c> while the animation is playing (suppressing the user's <c>OnUpdate</c> for the frame);
+    /// <c>false</c> once complete so the user update runs normally.</returns>
+    /// <remarks>Animation phases keyed off the accumulated <c>_particleTime</c>: hold (&lt; 1s),
+    /// jitter (&lt; 2s), explode outward (&lt; 5s), then mark complete. Also draws the OLC-3 copyright
+    /// notice via the engine's <c>DrawStringPropDecal</c>.</remarks>
     protected internal override bool OnBeforeUserUpdate(ref float elapsedTime)
     {
         if (_complete) return false;

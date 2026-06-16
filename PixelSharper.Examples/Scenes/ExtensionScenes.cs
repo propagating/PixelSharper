@@ -10,17 +10,28 @@ namespace PixelSharper.Examples.Scenes;
 // ---------------------------------------------------------------------------------------------
 // TransformedView — a pan/zoom camera; world-space draws stay anchored as you move the view.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the TransformedView extension: a pan/zoom camera with world-space draws via HandlePanAndZoom.</summary>
+/// <remarks>Exercises the <see cref="TransformedView"/> PGEX: world-space drawing wrappers anchored under a pannable, zoomable camera.</remarks>
+/// <seealso cref="TransformedView"/>
 public class TransformedViewScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"TransformedView (pan/zoom)"</c>.</value>
     public string Title => "TransformedView (pan/zoom)";
+    /// <summary>The pan/zoom camera view.</summary>
     private TransformedView _view = null!;
 
+    /// <summary>Creates the view sized to the screen.</summary>
+    /// <param name="e">The host showcase engine, queried for the screen size used to initialise the view.</param>
     public void Initialise(Showcase e)
     {
         _view = new TransformedView();
         _view.Initialise(new Vector2d<int>(e.ScreenWidth(), e.ScreenHeight()));
     }
 
+    /// <summary>Handles pan/zoom input and draws a world-space grid and shapes.</summary>
+    /// <param name="e">The host showcase engine used for the instruction text.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; the view is driven by input, not time).</param>
     public void Update(Showcase e, float dt)
     {
         e.DrawString(4, e.CanvasTop + 2, "Middle-drag to pan, wheel to zoom. Draws are world-space.", Pixel.WHITE);
@@ -40,18 +51,31 @@ public class TransformedViewScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // Wireframe — hierarchical 2D wireframe models (a spinning gear).
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the Wireframe extension: a hierarchical 2D model (gear mesh) positioned, rotated, and drawn as line loops.</summary>
+/// <remarks>Exercises the <see cref="Wireframe"/> PGEX: a <see cref="Model"/> built from a generated gear mesh and drawn through a <see cref="Matrix2D"/> world transform.</remarks>
+/// <seealso cref="Wireframe"/>
+/// <seealso cref="Model"/>
 public class WireframeScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Wireframe Models"</c>.</value>
     public string Title => "Wireframe Models";
+    /// <summary>The gear wireframe model.</summary>
     private Model _gear = null!;
+    /// <summary>Accumulated time, driving the rotation.</summary>
     private float _t;
 
+    /// <summary>Builds the gear model from a generated gear mesh.</summary>
+    /// <param name="e">The host showcase engine (unused; the model is built independently of the engine).</param>
     public void Initialise(Showcase e)
     {
         _gear = new Model();
         _gear.SetMesh(Wireframe.MeshGear(10, 36, 24));
     }
 
+    /// <summary>Positions, rotates, and draws the spinning gear model.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and to draw the model.</param>
+    /// <param name="dt">Seconds since the previous frame; accumulated into <c>_t</c> to drive the rotation.</param>
     public void Update(Showcase e, float dt)
     {
         _t += dt;
@@ -66,14 +90,26 @@ public class WireframeScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // GFX2D — affine-transform blit (rotate/scale) of a sprite.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the GFX2D extension: an affine Transform2D (rotate + scale) back-sampling a sprite.</summary>
+/// <remarks>Exercises the <see cref="GFX2D"/> PGEX: a chained <c>Transform2D</c> (translate, rotate, scale, translate) drives a back-sampling sprite blit.</remarks>
+/// <seealso cref="GFX2D"/>
 public class Gfx2dScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"GFX2D - Affine Sprites"</c>.</value>
     public string Title => "GFX2D — Affine Sprites";
+    /// <summary>The checker sprite being transformed.</summary>
     private Sprite _sprite = null!;
+    /// <summary>Accumulated time, driving the rotation.</summary>
     private float _t;
 
+    /// <summary>Loads the shared checker sprite.</summary>
+    /// <param name="e">The host showcase engine (unused; the sprite comes from <see cref="DemoArt.Checker"/>).</param>
     public void Initialise(Showcase e) => _sprite = DemoArt.Checker();
 
+    /// <summary>Builds a rotate/scale/translate transform and blits the sprite through it.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and the instruction text.</param>
+    /// <param name="dt">Seconds since the previous frame; accumulated into <c>_t</c> to drive the rotation.</param>
     public void Update(Showcase e, float dt)
     {
         _t += dt;
@@ -90,14 +126,26 @@ public class Gfx2dScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // HW3D — a hardware-accelerated, textured, depth-tested 3D cube via a Camera3D.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the Hardware3D path: uploading a textured cube mesh and Camera3D matrices for GPU-rasterised, depth-tested 3D.</summary>
+/// <remarks>Exercises the <c>HW3D_*</c> engine API together with the <c>Hardware3D</c> <see cref="Mesh"/> (built by <see cref="Hw3d"/>) and <see cref="Camera3D"/> utilities; the GPU performs the depth-tested rasterisation.</remarks>
+/// <seealso cref="Camera3D"/>
+/// <seealso cref="Mesh"/>
 public class Hw3dScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"HW3D - Hardware 3D"</c>.</value>
     public string Title => "HW3D — Hardware 3D";
+    /// <summary>The texture decal applied to the cube.</summary>
     private Decal _decal = null!;
+    /// <summary>The centred cube mesh.</summary>
     private Mesh _cube = null!;
+    /// <summary>The 3D camera supplying projection/view matrices.</summary>
     private Camera3D _cam = null!;
+    /// <summary>Accumulated time, driving the rotation.</summary>
     private float _t;
 
+    /// <summary>Builds the cube decal/mesh and configures the 3D camera.</summary>
+    /// <param name="e">The host showcase engine, queried for the screen size used to configure the camera.</param>
     public void Initialise(Showcase e)
     {
         _decal = new Decal(DemoArt.Checker());
@@ -110,6 +158,9 @@ public class Hw3dScene : IExampleScene
         _cam.Update();
     }
 
+    /// <summary>Enables depth testing, sets projection/model-view matrices, and draws the rotating cube.</summary>
+    /// <param name="e">The host showcase engine used for the instruction text and the <c>HW3D_*</c> draw calls.</param>
+    /// <param name="dt">Seconds since the previous frame; accumulated into <c>_t</c> to drive the cube's rotation.</param>
     public void Update(Showcase e, float dt)
     {
         _t += dt;

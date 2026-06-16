@@ -11,33 +11,46 @@ using MouseButton = OpenTK.Windowing.GraphicsLibraryFramework.MouseButton;
 
 namespace PixelSharper.Core.Platforms;
 
-// OpenTK (GLFW) implementation of the Platform abstraction.
-//
-// olc runs the OS event loop on the main thread and the GL context on a separate engine
-// thread. GLFW requires window/event calls on the main thread but allows the GL context to
-// be current on another; rather than reproduce that split, we collapse to a single thread:
-// the engine loop pumps events via HandleSystemEvent each frame, so StartSystemEventLoop
-// (used by olc's GLUT/Emscripten platforms that own the loop) is a no-op here.
+/// <summary>
+/// OpenTK (GLFW) implementation of the Platform abstraction. Collapses olc's split OS/GL
+/// threads into one: the engine loop pumps events via HandleSystemEvent each frame, so
+/// StartSystemEventLoop is a no-op.
+/// </summary>
+/// <remarks>
+/// <para>
+/// olc splits the OS event loop (main thread) from the GL context (engine thread). GLFW is
+/// single-threaded-friendly, so this port runs everything on one thread: the engine loop calls
+/// <see cref="HandleSystemEvent"/> each frame and <see cref="StartSystemEventLoop"/> does nothing.
+/// </para>
+/// <para>
+/// Input follows a pull model: the engine polls the state members each frame after
+/// <see cref="HandleSystemEvent"/>, then resolves pressed/released/held transitions itself.
+/// </para>
+/// </remarks>
 public class PlatformOpenTK : Platform
 {
+    /// <summary>Backing GLFW window; null until CreateWindowPane runs.</summary>
     private NativeWindow? _window;
 
-    // Exposed so the engine loop can pump events, query the real client size, and detect
-    // a close request (_window.IsExiting) — the abstract Platform contract intentionally
-    // stays olc-shaped and doesn't surface these.
+    /// <summary>The underlying GLFW window, exposed for the engine loop to query size/close state.</summary>
+    /// <value>The GLFW <see cref="NativeWindow"/>, or null before <see cref="CreateWindowPane"/> runs.</value>
     public NativeWindow? Window => _window;
 
-    // True once the user has requested the window close (set during HandleSystemEvent), or if
-    // no window exists. The engine loop polls this to know when to stop.
+    /// <summary>True once the user has requested close (or no window exists); polled by the engine loop to stop.</summary>
+    /// <value><c>true</c> when there is no window or it is exiting; otherwise <c>false</c>.</value>
     public bool ShouldClose => _window == null || _window.IsExiting;
 
-    // Current client (drawable) size in pixels. The engine polls this each frame to detect
-    // user resizes (our pull-model equivalent of olc's OS resize callback).
+    /// <summary>Current client (drawable) size in pixels; polled each frame to detect user resizes.</summary>
+    /// <value>The window client size, or <c>default</c> (zero) when no window exists.</value>
     public Vector2d<int> ClientSize =>
         _window == null ? default : new Vector2d<int>(_window.ClientSize.X, _window.ClientSize.Y);
 
+    /// <summary>Per-application start-up hook; nothing to do for GLFW.</summary>
+    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
     public override FileReadCode ApplicationStartUp() => FileReadCode.OK;
 
+    /// <summary>Per-application clean-up; disposes the window.</summary>
+    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
     public override FileReadCode ApplicationCleanUp()
     {
         _window?.Dispose();
@@ -45,10 +58,26 @@ public class PlatformOpenTK : Platform
         return FileReadCode.OK;
     }
 
+    /// <summary>Per-thread start-up hook; no-op in the single-threaded model.</summary>
+    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
     public override FileReadCode ThreadStartUp() => FileReadCode.OK;
 
+    /// <summary>Per-thread clean-up hook; no-op in the single-threaded model.</summary>
+    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
     public override FileReadCode ThreadCleanUp() => FileReadCode.OK;
 
+    /// <summary>Creates the GLFW window with a legacy/compatibility GL 2.1 context for OGL10 immediate mode.</summary>
+    /// <param name="windowPos">Top-left screen position of the window, in pixels.</param>
+    /// <param name="windowSize">Client area size of the window, in pixels.</param>
+    /// <param name="fullScreen">When true, opens the window full-screen; otherwise normal/windowed.</param>
+    /// <returns>Always <see cref="FileReadCode.OK"/> once the window is created.</returns>
+    /// <remarks>
+    /// <para>
+    /// OGL10 immediate mode (<c>glBegin</c>/<c>glEnd</c>) requires a legacy/compatibility context. GLFW only
+    /// accepts a profile hint for GL 3.2 or later, so this requests GL 2.1 with <see cref="ContextProfile.Any"/>
+    /// and clears the forward-compatible flag (valid only for GL 3.0 or later) to obtain a fixed-function context.
+    /// </para>
+    /// </remarks>
     public override FileReadCode CreateWindowPane(Vector2d<int> windowPos, Vector2d<int> windowSize, bool fullScreen)
     {
         var settings = new NativeWindowSettings
@@ -74,9 +103,16 @@ public class PlatformOpenTK : Platform
         return FileReadCode.OK;
     }
 
+    /// <summary>Files dropped since the last consume; null when none pending.</summary>
     private List<string>? _pendingDropFiles;
+    /// <summary>Cursor location at the time of the pending drop.</summary>
     private Vector2d<int> _pendingDropPoint;
 
+    /// <summary>GLFW file-drop callback; records the dropped file names and the cursor position.</summary>
+    /// <param name="e">The GLFW file-drop event carrying the dropped file names.</param>
+    /// <remarks>
+    /// <para>GLFW's drop callback carries no position, so the cursor location at drop time is captured instead.</para>
+    /// </remarks>
     private void OnFileDrop(FileDropEventArgs e)
     {
         _pendingDropFiles = new List<string>(e.FileNames);
@@ -86,7 +122,10 @@ public class PlatformOpenTK : Platform
             : new Vector2d<int>((int)_window.MouseState.X, (int)_window.MouseState.Y);
     }
 
-    // Hands the engine any files dropped since the last call (window-space drop point), once.
+    /// <summary>Hands the engine any files dropped since the last call (window-space drop point), once.</summary>
+    /// <param name="files">Receives the dropped file names when a drop is pending; otherwise null.</param>
+    /// <param name="point">Receives the window-space cursor position at drop time; otherwise <c>default</c>.</param>
+    /// <returns><c>true</c> if a pending drop was consumed; <c>false</c> if none was pending.</returns>
     public bool TryConsumeDroppedFiles(out List<string> files, out Vector2d<int> point)
     {
         if (_pendingDropFiles == null)
@@ -101,6 +140,12 @@ public class PlatformOpenTK : Platform
         return true;
     }
 
+    /// <summary>Makes the window's GL context current and hands it to the active renderer's CreateDevice.</summary>
+    /// <param name="fullScreen">Whether the device is being created for a full-screen window.</param>
+    /// <param name="enableVsync">When true, requests vertical-sync presentation.</param>
+    /// <param name="viewPos">Top-left of the initial viewport rectangle, in pixels.</param>
+    /// <param name="viewSize">Size of the initial viewport rectangle, in pixels.</param>
+    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window/renderer or device creation fails.</returns>
     public override FileReadCode CreateGraphics(bool fullScreen, bool enableVsync, Vector2d<int> viewPos, Vector2d<int> viewSize)
     {
         if (_window == null || Renderer.Active == null)
@@ -117,6 +162,9 @@ public class PlatformOpenTK : Platform
         return FileReadCode.OK;
     }
 
+    /// <summary>Sets the window title bar text.</summary>
+    /// <param name="title">The text to display in the title bar.</param>
+    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window.</returns>
     public override FileReadCode SetWindowTitle(string title)
     {
         if (_window == null) return FileReadCode.FAIL;
@@ -124,6 +172,9 @@ public class PlatformOpenTK : Platform
         return FileReadCode.OK;
     }
 
+    /// <summary>Toggles the window border between a resizable frame and borderless.</summary>
+    /// <param name="showFrame">When true, shows a resizable frame; when false, makes the window borderless.</param>
+    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window.</returns>
     public override FileReadCode ShowWindowFrame(bool showFrame = true)
     {
         if (_window == null) return FileReadCode.FAIL;
@@ -131,6 +182,10 @@ public class PlatformOpenTK : Platform
         return FileReadCode.OK;
     }
 
+    /// <summary>Repositions and resizes the window's client area.</summary>
+    /// <param name="windowPos">New top-left screen position of the window, in pixels.</param>
+    /// <param name="windowSize">New client area size, in pixels.</param>
+    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window.</returns>
     public override FileReadCode SetWindowSize(Vector2d<int> windowPos, Vector2d<int> windowSize)
     {
         if (_window == null) return FileReadCode.FAIL;
@@ -139,12 +194,17 @@ public class PlatformOpenTK : Platform
         return FileReadCode.OK;
     }
 
+    /// <summary>No-op: the engine loop owns the cadence and pumps events via HandleSystemEvent.</summary>
+    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
+    /// <seealso cref="HandleSystemEvent"/>
     public override FileReadCode StartSystemEventLoop()
     {
         // Single-threaded model: the engine loop owns the cadence and pumps via HandleSystemEvent.
         return FileReadCode.OK;
     }
 
+    /// <summary>Snapshots input for the new frame and dispatches pending GLFW events into it.</summary>
+    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window.</returns>
     public override FileReadCode HandleSystemEvent()
     {
         if (_window == null) return FileReadCode.FAIL;
@@ -157,8 +217,18 @@ public class PlatformOpenTK : Platform
     // --- Input (pull model: the engine polls these each frame after HandleSystemEvent, then
     //     resolves pressed/released/held transitions itself, à la olc's ScanHardware). ---
 
+    /// <summary>KeyPress-to-GLFW key lookup table built once at type init.</summary>
     private static readonly Dictionary<KeyPress, Keys> KeyMap = BuildKeyMap();
 
+    /// <summary>True if the given key is currently held; SHIFT/CTRL match either side.</summary>
+    /// <param name="key">The logical <see cref="KeyPress"/> to test.</param>
+    /// <returns><c>true</c> if the key is down this frame; <c>false</c> if up, unmapped, or there is no window.</returns>
+    /// <remarks>
+    /// <para>
+    /// <see cref="KeyPress.SHIFT"/> and <see cref="KeyPress.CTRL"/> report down if either the left or right
+    /// physical key is held, mirroring olc's single-modifier model; other keys resolve through <c>KeyMap</c>.
+    /// </para>
+    /// </remarks>
     public bool IsKeyDown(KeyPress key)
     {
         if (_window == null) return false;
@@ -173,6 +243,9 @@ public class PlatformOpenTK : Platform
         };
     }
 
+    /// <summary>True if the given mouse button (0/1/2 = left/right/middle) is currently held.</summary>
+    /// <param name="button">Button index: 0 left, 1 right, 2 middle (matching olc's ordering).</param>
+    /// <returns><c>true</c> if the button is down this frame; <c>false</c> if up or there is no window.</returns>
     public bool IsMouseDown(int button)
     {
         if (_window == null) return false;
@@ -180,14 +253,28 @@ public class PlatformOpenTK : Platform
         return _window.MouseState.IsButtonDown((MouseButton)button);
     }
 
+    /// <summary>Current cursor position in window-client pixels.</summary>
+    /// <value>The (X, Y) cursor position in client pixels, or (0, 0) when no window exists.</value>
     public (int X, int Y) MousePosition =>
         _window == null ? (0, 0) : ((int)_window.MouseState.X, (int)_window.MouseState.Y);
 
-    // GLFW reports scroll in notches (~1.0 per detent); olc uses Windows' WHEEL_DELTA (120).
+    /// <summary>Vertical scroll delta this frame, in GLFW notches (~1.0 per detent).</summary>
+    /// <value>The vertical scroll delta since the last frame, or 0 when no window exists.</value>
     public float MouseScroll => _window?.MouseState.ScrollDelta.Y ?? 0.0f;
 
+    /// <summary>True while the window has input focus.</summary>
+    /// <value><c>true</c> when the window holds input focus; otherwise <c>false</c>.</value>
     public bool IsFocused => _window?.IsFocused ?? false;
 
+    /// <summary>Builds the KeyPress-to-GLFW key map (letters/digits/function/keypad keys plus named keys).</summary>
+    /// <returns>A dictionary mapping each supported <see cref="KeyPress"/> to its GLFW key.</returns>
+    /// <remarks>
+    /// <para>
+    /// Letters, digits, function keys, and keypad digits are filled by contiguous-range arithmetic; the
+    /// remaining named/OEM keys are mapped explicitly. <see cref="KeyPress.OEM_8"/> has no portable GLFW
+    /// equivalent and is left unmapped (so it always reads as not-down).
+    /// </para>
+    /// </remarks>
     private static Dictionary<KeyPress, Keys> BuildKeyMap()
     {
         var map = new Dictionary<KeyPress, Keys>();

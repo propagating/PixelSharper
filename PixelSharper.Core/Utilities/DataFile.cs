@@ -5,45 +5,74 @@ using System.Text;
 
 namespace PixelSharper.Core.Utilities;
 
-// Port of olcUTIL_DataFile — a hierarchical key/value store with a simple text serialisation
-// (nodes in { } blocks, properties as "name = a, b, c", '#' comments). Each property holds an
-// ordered list of string values, accessed as string/real/int; child nodes are accessed by name.
+/// <summary>Port of olcUTIL_DataFile — a hierarchical key/value store with a simple text serialisation (nodes in { } blocks, properties as "name = a, b, c", '#' comments). Each property holds an ordered list of string values, accessed as string/real/int; child nodes are accessed by name.</summary>
+/// <remarks>
+/// <para>Text format: a node is a name followed by a <c>{ }</c> block; a property is <c>name = a, b, c</c> with comma-separated values (values containing the separator are quoted); a line beginning with <c>#</c> is a comment, preserved verbatim for round-tripping. Indentation is cosmetic.</para>
+/// <para>Each <see cref="DataFile"/> is simultaneously a property (an ordered list of string values) and a node (an ordered, name-keyed map of child <see cref="DataFile"/>s).</para>
+/// </remarks>
 public class DataFile
 {
-    // The list of string values that make up this property's value.
+    /// <summary>The list of string values that make up this property's value.</summary>
     private readonly List<string> _content = new();
-    // Ordered child nodes (an "ordered map": the list preserves insertion order, the dictionary
-    // maps name -> index for fast lookup).
+    /// <summary>Ordered child nodes (an "ordered map": the list preserves insertion order, the dictionary maps name to index for fast lookup).</summary>
     private readonly List<(string Name, DataFile Node)> _objects = new();
+    /// <summary>Maps a child node name to its index in the ordered list.</summary>
     private readonly Dictionary<string, int> _mapObjects = new();
-    // Comments are preserved for round-tripping but have no assignment.
+    /// <summary>Comments are preserved for round-tripping but have no assignment.</summary>
     private bool _isComment;
 
+    /// <summary>Creates an empty node.</summary>
     public DataFile() { }
 
     // O--- Value access ---O
+    /// <summary>Sets the string value at the given list index, growing the list as needed.</summary>
+    /// <param name="value">The string value to store.</param>
+    /// <param name="item">The zero-based value index; intervening slots are filled with empty strings.</param>
     public void SetString(string value, int item = 0)
     {
         while (item >= _content.Count) _content.Add(string.Empty);
         _content[item] = value;
     }
 
+    /// <summary>Gets the string value at the given list index (empty string if out of range).</summary>
+    /// <param name="item">The zero-based value index.</param>
+    /// <returns>The stored value, or an empty string if <paramref name="item"/> is out of range.</returns>
     public string GetString(int item = 0) => item >= 0 && item < _content.Count ? _content[item] : string.Empty;
 
+    /// <summary>Parses the value at the index as a double (0 if unparseable).</summary>
+    /// <param name="item">The zero-based value index.</param>
+    /// <returns>The parsed double, or <c>0.0</c> if the value is missing or unparseable.</returns>
     public double GetReal(int item = 0)
         => double.TryParse(GetString(item), NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0.0;
+    /// <summary>Stores a double value at the given index (invariant culture).</summary>
+    /// <param name="value">The double value to store.</param>
+    /// <param name="item">The zero-based value index.</param>
     public void SetReal(double value, int item = 0) => SetString(value.ToString(CultureInfo.InvariantCulture), item);
 
+    /// <summary>Parses the value at the index as an int (0 if unparseable).</summary>
+    /// <param name="item">The zero-based value index.</param>
+    /// <returns>The parsed int, or <c>0</c> if the value is missing or unparseable.</returns>
     public int GetInt(int item = 0)
         => int.TryParse(GetString(item), NumberStyles.Any, CultureInfo.InvariantCulture, out var n) ? n : 0;
+    /// <summary>Stores an int value at the given index (invariant culture).</summary>
+    /// <param name="value">The int value to store.</param>
+    /// <param name="item">The zero-based value index.</param>
     public void SetInt(int value, int item = 0) => SetString(value.ToString(CultureInfo.InvariantCulture), item);
 
+    /// <summary>Number of string values held by this property.</summary>
+    /// <returns>The count of string values in this property.</returns>
     public int GetValueCount() => _content.Count;
 
     // O--- Child access ---O
+    /// <summary>Whether a child node with the given name exists.</summary>
+    /// <param name="name">The child node name to test.</param>
+    /// <returns><c>true</c> if a child node named <paramref name="name"/> exists; otherwise <c>false</c>.</returns>
     public bool HasProperty(string name) => _mapObjects.ContainsKey(name);
 
-    // Access (creating if absent) a child node by name.
+    /// <summary>Accesses (creating if absent) a child node by name.</summary>
+    /// <param name="name">The child node name; a new empty node is created if it does not exist.</param>
+    /// <value>The child node named <paramref name="name"/>.</value>
+    /// <returns>The existing or newly created child node.</returns>
     public DataFile this[string name]
     {
         get
@@ -57,7 +86,10 @@ public class DataFile
         }
     }
 
-    // Access via a dotted path - "root.node.something.property".
+    /// <summary>Accesses a descendant node via a dotted path - "root.node.something.property".</summary>
+    /// <param name="name">A dotted path (e.g. <c>node.child.leaf</c>); missing nodes along the path are created.</param>
+    /// <returns>The descendant node at the end of the path.</returns>
+    /// <seealso cref="GetIndexedProperty"/>
     public DataFile GetProperty(string name)
     {
         var x = name.IndexOf('.');
@@ -66,9 +98,21 @@ public class DataFile
         return HasProperty(head) ? this[head].GetProperty(name.Substring(x + 1)) : this[head];
     }
 
+    /// <summary>Accesses an indexed child node by the convention "name[index]".</summary>
+    /// <param name="name">The base child node name.</param>
+    /// <param name="index">The index appended as <c>name[index]</c>.</param>
+    /// <returns>The descendant node named <c>name[index]</c>.</returns>
+    /// <seealso cref="GetProperty"/>
     public DataFile GetIndexedProperty(string name, int index) => GetProperty($"{name}[{index}]");
 
     // O--- Serialisation ---O
+    /// <summary>Writes a node tree to a text file; returns false on I/O error.</summary>
+    /// <param name="node">The root node to serialise.</param>
+    /// <param name="fileName">The destination file path.</param>
+    /// <param name="indent">The indentation string emitted per nesting level.</param>
+    /// <param name="listSep">The separator character placed between list values.</param>
+    /// <returns><c>true</c> on success; <c>false</c> if an <see cref="IOException"/> occurs.</returns>
+    /// <seealso cref="Read"/>
     public static bool Write(DataFile node, string fileName, string indent = "\t", char listSep = ',')
     {
         try
@@ -83,6 +127,12 @@ public class DataFile
         }
     }
 
+    /// <summary>Recursively serialises a node's properties and child blocks to the writer.</summary>
+    /// <param name="n">The node whose children are serialised.</param>
+    /// <param name="file">The writer to emit text to.</param>
+    /// <param name="indent">The indentation string emitted per nesting level.</param>
+    /// <param name="listSep">The separator character placed between list values.</param>
+    /// <param name="level">The current nesting level (controls indentation depth).</param>
     private static void WriteNode(DataFile n, StreamWriter file, string indent, char listSep, int level)
     {
         var sep = listSep + " ";
@@ -121,6 +171,12 @@ public class DataFile
         }
     }
 
+    /// <summary>Parses a text file into the given node tree; returns false if the file is missing.</summary>
+    /// <param name="node">The root node populated from the file.</param>
+    /// <param name="fileName">The source file path.</param>
+    /// <param name="listSep">The separator character used between list values.</param>
+    /// <returns><c>true</c> if the file was read; <c>false</c> if <paramref name="fileName"/> does not exist.</returns>
+    /// <seealso cref="Write"/>
     public static bool Read(DataFile node, string fileName, char listSep = ',')
     {
         if (!File.Exists(fileName)) return false;

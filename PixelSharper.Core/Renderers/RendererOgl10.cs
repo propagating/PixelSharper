@@ -8,19 +8,32 @@ using PixelSharper.Core.Types;
 
 namespace PixelSharper.Core.Renderers;
 
-// Faithful port of olc::Renderer_OGL10 — fixed-function, immediate-mode OpenGL 1.0
-// (olcPixelGameEngine.h ~line 5302). Context creation/swapping is delegated to the
-// OpenTK windowing layer (the Platform sibling) rather than raw WGL/GLX as in olc.
+/// <summary>
+/// Faithful port of olc::Renderer_OGL10 — fixed-function, immediate-mode OpenGL 1.0.
+/// Context creation/swapping is delegated to the OpenTK windowing layer (the Platform sibling)
+/// rather than raw WGL/GLX as in olc.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Texture uploads (<see cref="UpdateTexture(uint, Sprite)"/>) and read-backs
+/// (<see cref="ReadTexture(uint, Sprite)"/>) go directly to and from the blittable
+/// <c>List{Pixel}</c> backing array via <see cref="System.Runtime.InteropServices.CollectionsMarshal"/>,
+/// with no per-frame copy.
+/// </para>
+/// </remarks>
+/// <seealso cref="Renderer"/>
 public class RendererOgl10 : Renderer
 {
-    // The OpenGL context owned by the platform window; supplied via CreateDevice.
+    /// <summary>The OpenGL context owned by the platform window; supplied via CreateDevice.</summary>
     private IGraphicsContext? _context;
 
-    // Track current decal mode so SetDecalMode only changes GL state on transitions
-    // (olc seeds nDecalMode with (DecalMode)(-1); null serves the same role). olc's
-    // nDecalStructure is dead state in OGL10 — the primitive comes straight from the decal/task.
+    /// <summary>
+    /// Current decal mode, so SetDecalMode only touches GL state on transitions (null mirrors
+    /// olc seeding nDecalMode with (DecalMode)(-1)). olc's nDecalStructure is dead state in OGL10.
+    /// </summary>
     private DecalMode? _decalMode;
 
+    /// <summary>The 3D projection matrix loaded for depth-enabled GPU tasks (column-major 4x4).</summary>
     private float[] _matProjection =
     {
         1, 0, 0, 0,
@@ -29,12 +42,18 @@ public class RendererOgl10 : Renderer
         0, 0, 0, 1
     };
 
+    /// <summary>No-op here; OpenTK creates the context lazily in CreateDevice (olc only worked for GLUT).</summary>
     public override void PrepareDevice()
     {
         // olc only does work here for the GLUT platform; WGL/GLX (and OpenTK) create the
         // context lazily in CreateDevice, so nothing is required.
     }
 
+    /// <summary>Takes the platform's OpenTK context (parameters[0]), makes it current, sets vsync and base GL state.</summary>
+    /// <param name="parameters">Platform-supplied arguments; <c>parameters[0]</c> must be the OpenTK <c>IGraphicsContext</c>.</param>
+    /// <param name="fullScreen">Whether the device is created for a full-screen window (unused in this OGL10 port).</param>
+    /// <param name="vsync">When <c>true</c> the swap interval is set to 1 (vsync on); otherwise 0.</param>
+    /// <returns><see cref="FileReadCode.OK"/> on success, or <see cref="FileReadCode.FAIL"/> if no valid context was supplied.</returns>
     public override FileReadCode CreateDevice(List<object> parameters, bool fullScreen, bool vsync)
     {
         // The platform hands us its OpenTK graphics context as parameters[0].
@@ -50,6 +69,8 @@ public class RendererOgl10 : Renderer
         return FileReadCode.OK;
     }
 
+    /// <summary>Drops the context reference; its lifetime is owned by the platform window.</summary>
+    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
     public override FileReadCode DestroyDevice()
     {
         // The context's lifetime is owned by the platform window, not the renderer.
@@ -57,11 +78,13 @@ public class RendererOgl10 : Renderer
         return FileReadCode.OK;
     }
 
+    /// <summary>Presents the rendered frame by swapping the back buffer.</summary>
     public override void DisplayFrame()
     {
         _context?.SwapBuffers();
     }
 
+    /// <summary>Sets up per-frame GL state: alpha blending on, normal blend func, culling off.</summary>
     public override void PrepareDrawing()
     {
         GL.Enable(EnableCap.Blend);
@@ -70,6 +93,8 @@ public class RendererOgl10 : Renderer
         GL.Disable(EnableCap.CullFace);
     }
 
+    /// <summary>Switches the GL blend function for the given decal blend mode, skipping no-op transitions.</summary>
+    /// <param name="mode">The target blend mode; ignored if it already matches the current mode.</param>
     public override void SetDecalMode(DecalMode mode)
     {
         if (mode == _decalMode) return;
@@ -99,6 +124,10 @@ public class RendererOgl10 : Renderer
         _decalMode = mode;
     }
 
+    /// <summary>Draws a full-screen textured quad for a layer, applying its UV offset/scale and tint.</summary>
+    /// <param name="offset">UV offset added to each corner texture coordinate.</param>
+    /// <param name="scale">UV scale applied to each corner texture coordinate.</param>
+    /// <param name="tint">Colour multiplied into the quad.</param>
     public override void DrawLayerQuad(Vector2d<float> offset, Vector2d<float> scale, Pixel tint)
     {
         GL.Disable(EnableCap.CullFace);
@@ -115,6 +144,9 @@ public class RendererOgl10 : Renderer
         GL.End();
     }
 
+    /// <summary>Renders a queued decal instance as a 2D or depth-tested 3D textured primitive.</summary>
+    /// <param name="decal">The queued decal instance carrying texture, blend mode, structure, and per-vertex data.</param>
+    /// <seealso cref="DoGPUTask(GPUTask)"/>
     public override void DrawDecal(DecalInstance decal)
     {
         SetDecalMode(decal.Mode);
@@ -171,6 +203,9 @@ public class RendererOgl10 : Renderer
             GL.Disable(EnableCap.DepthTest);
     }
 
+    /// <summary>Renders a GPU task: applies cull/depth state and MVP matrices, then draws its tinted vertex buffer.</summary>
+    /// <param name="task">The GPU task carrying texture, cull/depth flags, MVP matrix, tint, and vertex buffer.</param>
+    /// <seealso cref="DrawDecal(DecalInstance)"/>
     public override void DoGPUTask(GPUTask task)
     {
         SetDecalMode(task.Mode);
@@ -255,11 +290,18 @@ public class RendererOgl10 : Renderer
         GL.PopMatrix();
     }
 
+    /// <summary>Sets the projection matrix used by depth-enabled GPU tasks.</summary>
+    /// <param name="mat">A column-major 4x4 projection matrix (16 floats).</param>
     public override void Set3DProjection(float[] mat)
     {
         _matProjection = mat;
     }
 
+    /// <summary>Allocates a GL texture, setting its min/mag filter and wrap modes; returns the texture id.</summary>
+    /// <param name="size">The texture dimensions (currently used by callers; sampling state is set here).</param>
+    /// <param name="filtered">When <c>true</c> the texture uses linear filtering; otherwise nearest-neighbour.</param>
+    /// <param name="clamp">When <c>true</c> the texture clamps to its edge; otherwise it repeats.</param>
+    /// <returns>The newly generated GL texture id.</returns>
     public override int CreateTexture(Vector2d<int> size, bool filtered = false, bool clamp = true)
     {
         var id = GL.GenTexture();
@@ -291,6 +333,16 @@ public class RendererOgl10 : Renderer
         return id;
     }
 
+    /// <summary>Uploads the sprite's pixels into the bound texture, zero-copy from the blittable List{Pixel}.</summary>
+    /// <param name="id">The texture id (already bound via <see cref="ApplyTexture(uint)"/>; ignored here, as in olc).</param>
+    /// <param name="sprite">The sprite whose pixels are uploaded; no-op if its width or height is non-positive.</param>
+    /// <remarks>
+    /// <para>
+    /// <see cref="Pixel"/> is a 4-byte blittable struct, so the upload reads straight from the
+    /// <c>List{Pixel}</c> backing array with no intermediate copy.
+    /// </para>
+    /// </remarks>
+    /// <seealso cref="ReadTexture(uint, Sprite)"/>
     public override void UpdateTexture(uint id, Sprite sprite)
     {
         // id is already bound via ApplyTexture; olc ignores it here too. Pixel is a 4-byte
@@ -301,6 +353,10 @@ public class RendererOgl10 : Renderer
             PixelFormat.Rgba, PixelType.UnsignedByte, ref MemoryMarshal.GetReference(span));
     }
 
+    /// <summary>Reads the bound texture's pixels back into the sprite's backing array.</summary>
+    /// <param name="id">The texture id (already bound via <see cref="ApplyTexture(uint)"/>; ignored here).</param>
+    /// <param name="sprite">The sprite whose backing array receives the pixels; no-op if its width or height is non-positive.</param>
+    /// <seealso cref="UpdateTexture(uint, Sprite)"/>
     public override void ReadTexture(uint id, Sprite sprite)
     {
         if (sprite.Width <= 0 || sprite.Height <= 0) return;
@@ -309,17 +365,25 @@ public class RendererOgl10 : Renderer
             ref MemoryMarshal.GetReference(span));
     }
 
+    /// <summary>Deletes the GL texture; returns the id passed in.</summary>
+    /// <param name="id">The GL texture id to delete.</param>
+    /// <returns>The same <paramref name="id"/> that was passed in.</returns>
     public override uint DeleteTexture(uint id)
     {
         GL.DeleteTexture((int)id);
         return id;
     }
 
+    /// <summary>Binds the texture as the active 2D texture.</summary>
+    /// <param name="id">The GL texture id to bind.</param>
     public override void ApplyTexture(uint id)
     {
         GL.BindTexture(TextureTarget.Texture2D, (int)id);
     }
 
+    /// <summary>Clears the colour buffer to the given pixel, and the depth buffer when requested.</summary>
+    /// <param name="p">The colour to clear the colour buffer to.</param>
+    /// <param name="depth">When <c>true</c> the depth buffer is also cleared.</param>
     public override void ClearBuffer(Pixel p, bool depth)
     {
         GL.ClearColor(p.Red / 255.0f, p.Green / 255.0f, p.Blue / 255.0f, p.Alpha / 255.0f);
@@ -328,6 +392,9 @@ public class RendererOgl10 : Renderer
             GL.Clear(ClearBufferMask.DepthBufferBit);
     }
 
+    /// <summary>Sets the GL viewport rectangle (letterbox position and size).</summary>
+    /// <param name="pos">Bottom-left position of the viewport in window pixels.</param>
+    /// <param name="size">Width and height of the viewport in window pixels.</param>
     public override void UpdateViewport(Vector2d<int> pos, Vector2d<int> size)
     {
         GL.Viewport(pos.X, pos.Y, size.X, size.Y);

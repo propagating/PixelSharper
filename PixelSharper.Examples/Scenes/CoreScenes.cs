@@ -7,12 +7,21 @@ namespace PixelSharper.Examples.Scenes;
 // ---------------------------------------------------------------------------------------------
 // Welcome — the landing page.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Landing page scene; demonstrates scaled DrawStringProp/DrawString text and introduces the showcase.</summary>
+/// <remarks>Exercises <see cref="PixelSharper.Core.PixelGameEngine.DrawStringProp(int, int, string, Pixel, int)"/> and <see cref="PixelSharper.Core.PixelGameEngine.DrawString(int, int, string, Pixel, int)"/> at varying scales.</remarks>
 public class WelcomeScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Welcome"</c>.</value>
     public string Title => "Welcome";
 
+    /// <summary>No resources to build.</summary>
+    /// <param name="e">The host showcase engine (unused; no resources are created).</param>
     public void Initialise(Showcase e) { }
 
+    /// <summary>Draws the welcome text and navigation hints.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and text drawing.</param>
+    /// <param name="elapsedTime">Seconds since the previous frame (unused; this scene is static).</param>
     public void Update(Showcase e, float elapsedTime)
     {
         var y = e.CanvasTop + 8;
@@ -27,13 +36,23 @@ public class WelcomeScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // Primitives — the CPU drawing surface: lines, rectangles, circles, triangles.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the CPU software draw primitives: DrawLine (with dash pattern), rectangles, circles, and triangles.</summary>
+/// <remarks>Exercises <see cref="PixelSharper.Core.PixelGameEngine.DrawLine(int, int, int, int, Pixel, uint)"/>, the <c>FillRect</c>/<c>DrawRect</c>, <c>FillCircle</c>/<c>DrawCircle</c>, and <c>FillTriangle</c>/<c>DrawTriangle</c> pairs.</remarks>
 public class PrimitivesScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Drawing Primitives"</c>.</value>
     public string Title => "Drawing Primitives";
+    /// <summary>Accumulated time, animating the dashed line.</summary>
     private float _t;
 
+    /// <summary>No resources to build.</summary>
+    /// <param name="e">The host showcase engine (unused; no resources are created).</param>
     public void Initialise(Showcase e) { }
 
+    /// <summary>Draws filled and outlined shapes plus an animated dashed line.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and primitive drawing.</param>
+    /// <param name="dt">Seconds since the previous frame; accumulated into <c>_t</c> to animate the dashed line endpoint.</param>
     public void Update(Showcase e, float dt)
     {
         _t += dt;
@@ -63,11 +82,19 @@ public class PrimitivesScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // Sprites — build a sprite in code, then blit it (scaled, flipped, partial) and texture a triangle.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates building a Sprite in code and blitting it scaled/flipped via DrawSprite plus FillTexturedTriangle.</summary>
+/// <remarks>Exercises <see cref="Sprite"/> construction, <see cref="PixelSharper.Core.PixelGameEngine.DrawSprite(int, int, Sprite, int, SpriteMirrorMode)"/>, and the software-textured <c>FillTexturedTriangle</c>.</remarks>
+/// <seealso cref="SpriteMirrorMode"/>
 public class SpritesScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Sprites and Textures"</c>.</value>
     public string Title => "Sprites & Textures";
+    /// <summary>The hand-built 8x8 checker sprite.</summary>
     private Sprite _sprite = null!;
 
+    /// <summary>Builds an 8x8 checker sprite pixel-by-pixel.</summary>
+    /// <param name="e">The host showcase engine (unused here; the sprite is built independently of the engine).</param>
     public void Initialise(Showcase e)
     {
         // An 8x8 checker with a magenta border.
@@ -80,6 +107,9 @@ public class SpritesScene : IExampleScene
             }
     }
 
+    /// <summary>Blits the sprite at 1x/4x/flipped and textures a triangle with it.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and sprite drawing.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; this scene is static).</param>
     public void Update(Showcase e, float dt)
     {
         var y = e.CanvasTop + 4;
@@ -102,12 +132,21 @@ public class SpritesScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // Text — monospaced + proportional fonts, scaling, and measuring.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates monospaced and proportional fonts, text scaling, and measuring via GetTextSizeProp.</summary>
+/// <remarks>Exercises <see cref="PixelSharper.Core.PixelGameEngine.DrawString(int, int, string, Pixel, int)"/>, <see cref="PixelSharper.Core.PixelGameEngine.DrawStringProp(int, int, string, Pixel, int)"/>, and <see cref="PixelSharper.Core.PixelGameEngine.GetTextSizeProp(string)"/>.</remarks>
 public class TextScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Text"</c>.</value>
     public string Title => "Text";
 
+    /// <summary>No resources to build.</summary>
+    /// <param name="e">The host showcase engine (unused; no resources are created).</param>
     public void Initialise(Showcase e) { }
 
+    /// <summary>Draws sample strings at various scales and boxes a measured string.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics, text drawing, and text measurement.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; this scene is static).</param>
     public void Update(Showcase e, float dt)
     {
         var y = e.CanvasTop + 6;

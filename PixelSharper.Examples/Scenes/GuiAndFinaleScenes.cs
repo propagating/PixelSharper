@@ -9,14 +9,24 @@ namespace PixelSharper.Examples.Scenes;
 // ---------------------------------------------------------------------------------------------
 // QuickGUI — retained-mode widgets (button, checkbox, slider) the user can interact with.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Demonstrates the QuickGUI extension: retained-mode widgets (Label, Button, CheckBox, Slider) the user interacts with.</summary>
+/// <remarks>Exercises the QuickGUI PGEX: a <see cref="Gui.Manager"/> drives <see cref="Gui.Label"/>, <see cref="Gui.Button"/>, <see cref="Gui.CheckBox"/>, and <see cref="Gui.Slider"/> widgets, drawn via the GPU decal path.</remarks>
 public class QuickGuiScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"QuickGUI"</c>.</value>
     public string Title => "QuickGUI";
+    /// <summary>The widget manager driving update/draw.</summary>
     private Gui.Manager _gui = null!;
+    /// <summary>A draggable value slider.</summary>
     private Gui.Slider _slider = null!;
+    /// <summary>A toggleable checkbox.</summary>
     private Gui.CheckBox _check = null!;
+    /// <summary>A clickable button.</summary>
     private Gui.Button _button = null!;
 
+    /// <summary>Builds the GUI manager and its label, button, checkbox, and slider widgets.</summary>
+    /// <param name="e">The host showcase engine, queried for canvas metrics to position the widgets.</param>
     public void Initialise(Showcase e)
     {
         _gui = new Gui.Manager();
@@ -26,6 +36,9 @@ public class QuickGuiScene : IExampleScene
         _slider = new Gui.Slider(_gui, new Vector2d<float>(20, e.CanvasTop + 58), new Vector2d<float>(160, e.CanvasTop + 58), 0, 100, 50);
     }
 
+    /// <summary>Updates and draws the widgets and reports their current values.</summary>
+    /// <param name="e">The host showcase engine used to update/draw the widgets and report their values.</param>
+    /// <param name="dt">Seconds since the previous frame (unused; the widgets are driven by input).</param>
     public void Update(Showcase e, float dt)
     {
         e.DrawString(4, e.CanvasTop + 2, "Interactive widgets — click the button, drag the slider.", Pixel.WHITE);
@@ -41,14 +54,26 @@ public class QuickGuiScene : IExampleScene
 // ---------------------------------------------------------------------------------------------
 // Grand finale — several systems running at once: wireframe + decals + palette.
 // ---------------------------------------------------------------------------------------------
+/// <summary>Finale scene running several systems at once: a wireframe gear, palette-tinted rotating decals, and a palette gradient band.</summary>
+/// <remarks>Combines the <see cref="Wireframe"/> extension, the GPU decal path, and the <see cref="Palette"/> utility in one frame.</remarks>
+/// <seealso cref="Palette"/>
+/// <seealso cref="Wireframe"/>
 public class FinaleScene : IExampleScene
 {
+    /// <summary>The scene's title.</summary>
+    /// <value>The literal <c>"Grand Finale"</c>.</value>
     public string Title => "Grand Finale";
+    /// <summary>The checker decal used for the bobbing row.</summary>
     private Decal _decal = null!;
+    /// <summary>The spinning wireframe gear.</summary>
     private Model _gear = null!;
+    /// <summary>The palette tinting the decals and gradient band.</summary>
     private Palette _pal = null!;
+    /// <summary>Accumulated time, driving all animation.</summary>
     private float _t;
 
+    /// <summary>Builds the decal, gear model, and palette.</summary>
+    /// <param name="e">The host showcase engine (unused; all resources are built independently of the engine).</param>
     public void Initialise(Showcase e)
     {
         _decal = new Decal(DemoArt.Checker());
@@ -57,6 +82,9 @@ public class FinaleScene : IExampleScene
         _pal = new Palette(Palette.Stock.ColdHot);
     }
 
+    /// <summary>Draws the palette band, spinning gear, and a row of bobbing palette-tinted decals.</summary>
+    /// <param name="e">The host showcase engine used for canvas metrics and all drawing.</param>
+    /// <param name="dt">Seconds since the previous frame; accumulated into <c>_t</c> to drive every animation in the scene.</param>
     public void Update(Showcase e, float dt)
     {
         _t += dt;

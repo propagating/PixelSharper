@@ -3,16 +3,27 @@ using PixelSharper.Core.Components;
 
 namespace PixelSharper.Core.Utilities;
 
-// Port of olcUTIL_Palette — an interpolated colour palette sampled continuously over [0..1]
-// (smooth, between colour stops) or via a precomputed 256-entry LUT (fast, discrete).
+/// <summary>Port of olcUTIL_Palette — an interpolated colour palette sampled continuously over [0..1] (smooth, between colour stops) or via a precomputed 256-entry LUT (fast, discrete).</summary>
 public class Palette
 {
-    public enum Stock { Empty, Greyscale, ColdHot, Spectrum }
+    /// <summary>Built-in starter palettes.</summary>
+    public enum Stock {
+        /// <summary>No colour stops.</summary>
+        Empty,
+        /// <summary>Black to white.</summary>
+        Greyscale,
+        /// <summary>Cyan to black to yellow.</summary>
+        ColdHot,
+        /// <summary>Full hue spectrum.</summary>
+        Spectrum }
 
-    // Sorted colour stops (normalised location, colour) and a fast indexed lookup table.
+    /// <summary>Sorted colour stops (normalised location, colour).</summary>
     private readonly List<(double Loc, Pixel Col)> _colours = new();
+    /// <summary>Precomputed 256-entry lookup table sampled from the stops.</summary>
     private readonly Pixel[] _indexed = new Pixel[256];
 
+    /// <summary>Creates a palette, optionally seeded from a built-in stock set, then builds the LUT.</summary>
+    /// <param name="stock">The built-in palette to seed the colour stops from; defaults to <see cref="Stock.Empty"/>.</param>
     public Palette(Stock stock = Stock.Empty)
     {
         switch (stock)
@@ -43,7 +54,10 @@ public class Palette
         ReconstructIndex();
     }
 
-    // Continuous sample, t in [0..1]: lerp between the bracketing colour stops.
+    /// <summary>Continuous sample, t in [0..1]: lerps between the bracketing colour stops.</summary>
+    /// <param name="t">The normalised position to sample; clamped to <c>[0, 1]</c>.</param>
+    /// <returns>The interpolated colour; <see cref="Pixel.BLACK"/> when there are no stops, or the single stop's colour when there is exactly one.</returns>
+    /// <seealso cref="Index"/>
     public Pixel Sample(double t)
     {
         if (_colours.Count == 0) return Pixel.BLACK;
@@ -61,15 +75,22 @@ public class Palette
         return Pixel.LinearInterpolation(prev.Col, cur.Col, (float)((i - prev.Loc) / (cur.Loc - prev.Loc)));
     }
 
-    // Discrete sample via the precomputed LUT, idx in [0..255]: fast, not smooth.
+    /// <summary>Discrete sample via the precomputed LUT, idx in [0..255]: fast, not smooth.</summary>
+    /// <param name="idx">The lookup-table entry to read, in <c>[0, 255]</c>.</param>
+    /// <returns>The precomputed colour at the given LUT index.</returns>
+    /// <seealso cref="Sample"/>
     public Pixel Index(byte idx) => _indexed[idx];
 
+    /// <summary>Removes all colour stops and resets the LUT to black.</summary>
     public void Clear()
     {
         _colours.Clear();
         for (var i = 0; i < 256; i++) _indexed[i] = Pixel.BLACK;
     }
 
+    /// <summary>Adds or replaces a colour stop at normalised location d, keeping stops sorted, and rebuilds the LUT.</summary>
+    /// <param name="d">The normalised location of the stop; clamped to <c>[0, 1]</c>. An existing stop at the same location is replaced.</param>
+    /// <param name="col">The colour for the stop.</param>
     public void SetColour(double d, Pixel col)
     {
         var i = Math.Clamp(d, 0.0, 1.0);
@@ -86,6 +107,7 @@ public class Palette
         ReconstructIndex();
     }
 
+    /// <summary>Rebuilds the 256-entry LUT by sampling the colour stops evenly over [0..1].</summary>
     private void ReconstructIndex()
     {
         for (var i = 0; i < 256; i++)

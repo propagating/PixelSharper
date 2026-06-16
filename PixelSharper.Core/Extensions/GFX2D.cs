@@ -3,22 +3,35 @@ using PixelSharper.Core.Types;
 
 namespace PixelSharper.Core.Extensions;
 
-// Port of olcPGEX_Graphics2D (olc::GFX2D) — advanced 2D drawing: an affine Transform2D accumulator
-// and a transform-aware sprite blit (rotate/scale/shear/translate/perspective via back-sampling).
+/// <summary>
+/// Port of olcPGEX_Graphics2D (olc::GFX2D) — advanced 2D drawing: an affine Transform2D accumulator
+/// and a transform-aware sprite blit (rotate/scale/shear/translate/perspective via back-sampling).
+/// </summary>
 public class GFX2D : PGEX
 {
-    // An affine transform built by appending operations. Uses olc's 4-matrix scheme:
-    // matrices 0 & 1 ping-pong as accumulation source/target, 2 holds the immediate op,
-    // 3 caches the inverse (regenerated lazily on Invert()).
+    /// <summary>
+    /// An affine transform built by appending operations. Uses olc's 4-matrix scheme:
+    /// matrices 0 and 1 ping-pong as accumulation source/target, 2 holds the immediate op,
+    /// 3 caches the inverse (regenerated lazily on Invert()).
+    /// </summary>
     public class Transform2D
     {
+        /// <summary>The four 3x3 matrices: two accumulation buffers, the immediate-op buffer, and the cached inverse.</summary>
         private readonly float[,,] _m = new float[4, 3, 3];
+        /// <summary>Index of the matrix buffer receiving the next accumulated product.</summary>
         private int _target;
+        /// <summary>Index of the matrix buffer holding the current accumulated transform.</summary>
         private int _source;
+        /// <summary>True when the accumulated matrix changed and the cached inverse is stale.</summary>
         private bool _dirty;
 
+        /// <summary>Creates an identity transform.</summary>
+        /// <remarks>Delegates to <see cref="Reset"/> to seed both accumulation buffers with the identity matrix.</remarks>
         public Transform2D() => Reset();
 
+        /// <summary>Resets the accumulator buffers to identity.</summary>
+        /// <remarks>Restores the ping-pong source/target indices and marks the cached inverse dirty,
+        /// discarding any previously appended operations.</remarks>
         public void Reset()
         {
             _target = 0;
@@ -32,6 +45,7 @@ public class GFX2D : PGEX
             }
         }
 
+        /// <summary>Multiplies the immediate-op matrix into the accumulator, swaps buffers, and marks the inverse dirty.</summary>
         private void Multiply()
         {
             for (var c = 0; c < 3; c++)
@@ -45,6 +59,8 @@ public class GFX2D : PGEX
             _dirty = true; // any multiply invalidates the cached inverse
         }
 
+        /// <summary>Appends a rotation by theta radians.</summary>
+        /// <param name="theta">Rotation angle in radians (positive is counter-clockwise in math convention).</param>
         public void Rotate(float theta)
         {
             _m[2, 0, 0] = MathF.Cos(theta);  _m[2, 1, 0] = MathF.Sin(theta); _m[2, 2, 0] = 0;
@@ -53,6 +69,9 @@ public class GFX2D : PGEX
             Multiply();
         }
 
+        /// <summary>Appends a non-uniform scale.</summary>
+        /// <param name="sx">Scale factor along the X axis.</param>
+        /// <param name="sy">Scale factor along the Y axis.</param>
         public void Scale(float sx, float sy)
         {
             _m[2, 0, 0] = sx; _m[2, 1, 0] = 0;  _m[2, 2, 0] = 0;
@@ -61,6 +80,9 @@ public class GFX2D : PGEX
             Multiply();
         }
 
+        /// <summary>Appends a shear (skew) along both axes.</summary>
+        /// <param name="sx">Shear factor applied to X proportional to Y.</param>
+        /// <param name="sy">Shear factor applied to Y proportional to X.</param>
         public void Shear(float sx, float sy)
         {
             _m[2, 0, 0] = 1;  _m[2, 1, 0] = sx; _m[2, 2, 0] = 0;
@@ -69,6 +91,9 @@ public class GFX2D : PGEX
             Multiply();
         }
 
+        /// <summary>Appends a translation.</summary>
+        /// <param name="ox">Offset added along the X axis.</param>
+        /// <param name="oy">Offset added along the Y axis.</param>
         public void Translate(float ox, float oy)
         {
             _m[2, 0, 0] = 1; _m[2, 1, 0] = 0; _m[2, 2, 0] = ox;
@@ -77,6 +102,11 @@ public class GFX2D : PGEX
             Multiply();
         }
 
+        /// <summary>Appends a projective (perspective) term to the bottom row.</summary>
+        /// <param name="ox">Perspective coefficient placed in the bottom-row X slot.</param>
+        /// <param name="oy">Perspective coefficient placed in the bottom-row Y slot.</param>
+        /// <remarks>Populates the homogeneous w-row so that subsequent <see cref="Forward"/>/<see cref="Backward"/>
+        /// calls perform a perspective divide.</remarks>
         public void Perspective(float ox, float oy)
         {
             _m[2, 0, 0] = 1;  _m[2, 1, 0] = 0;  _m[2, 2, 0] = 0;
@@ -85,7 +115,11 @@ public class GFX2D : PGEX
             Multiply();
         }
 
-        // Forward transform of (inX, inY) through the accumulated matrix.
+        /// <summary>Forward transform of (inX, inY) through the accumulated matrix (with perspective divide).</summary>
+        /// <param name="inX">Input X coordinate.</param>
+        /// <param name="inY">Input Y coordinate.</param>
+        /// <returns>The transformed point; the homogeneous component is divided out when non-zero.</returns>
+        /// <seealso cref="Backward"/>
         public Vector2d<float> Forward(float inX, float inY)
         {
             var ox = inX * _m[_source, 0, 0] + inY * _m[_source, 1, 0] + _m[_source, 2, 0];
@@ -95,7 +129,13 @@ public class GFX2D : PGEX
             return new Vector2d<float>(ox, oy);
         }
 
-        // Inverse transform (requires a prior Invert()).
+        /// <summary>Inverse transform of (inX, inY) through the cached inverse matrix (requires a prior Invert()).</summary>
+        /// <param name="inX">Input X coordinate in transformed space.</param>
+        /// <param name="inY">Input Y coordinate in transformed space.</param>
+        /// <returns>The back-transformed point; the homogeneous component is divided out when non-zero.</returns>
+        /// <remarks>Reads the cached inverse matrix, so <see cref="Invert"/> must have been called after the
+        /// last appended operation, else stale results are returned.</remarks>
+        /// <seealso cref="Forward"/>
         public Vector2d<float> Backward(float inX, float inY)
         {
             var ox = inX * _m[3, 0, 0] + inY * _m[3, 1, 0] + _m[3, 2, 0];
@@ -105,6 +145,9 @@ public class GFX2D : PGEX
             return new Vector2d<float>(ox, oy);
         }
 
+        /// <summary>Regenerates the cached inverse of the accumulated matrix if it is dirty.</summary>
+        /// <remarks>No-ops when the matrix is unchanged since the last inversion (the operation is costly).
+        /// Computes the 3x3 adjugate divided by the determinant; call before <see cref="Backward"/>.</remarks>
         public void Invert()
         {
             if (!_dirty) return; // costly, so only when the matrix changed
@@ -128,8 +171,16 @@ public class GFX2D : PGEX
         }
     }
 
-    // Draws a sprite with the transform applied: bound the transformed quad, then for each
-    // destination pixel back-sample the source texel.
+    /// <summary>
+    /// Draws a sprite with the transform applied: bound the transformed quad, then for each
+    /// destination pixel back-sample the source texel.
+    /// </summary>
+    /// <param name="sprite">Source sprite to blit; a <c>null</c> sprite is a no-op.</param>
+    /// <param name="transform">Affine/projective transform mapping source texels to destination pixels;
+    /// its inverse is (re)generated internally for the back-sampling pass.</param>
+    /// <remarks>Forward-transforms the four corners to find the destination bounding rectangle, then for
+    /// each covered screen pixel uses <see cref="Transform2D.Backward"/> to read the nearest source texel
+    /// and plots it through <see cref="PixelGameEngine.Draw(int, int, Pixel)"/>.</remarks>
     public static void DrawSprite(Sprite sprite, Transform2D transform)
     {
         if (sprite == null) return;

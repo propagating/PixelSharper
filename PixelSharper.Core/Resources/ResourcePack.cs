@@ -3,20 +3,42 @@ using PixelSharper.Core.Enums;
 
 namespace PixelSharper.Core.Resources;
 
+/// <summary>
+/// Bundles many asset files into one (optionally AES-encrypted or XOR-scrambled) pack file,
+/// indexed by an in-pack file map. Port of olc::ResourcePack.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Encryption uses AES-256 in CBC mode with a PBKDF2-derived key (see <see cref="TransformKey"/>);
+/// the random IV is written/read as a plaintext prefix of the pack file. Scrambling is a reversible
+/// XOR cycle over the password (see <see cref="ScrambleFile"/>).
+/// </para>
+/// </remarks>
+/// <seealso cref="ResourceFile"/>
+/// <seealso cref="ResourceBuffer"/>
 public class ResourcePack
 {
+    /// <summary>Index of packed file name to its size/offset within the pack stream.</summary>
+    /// <value>A map from in-pack file path to its <see cref="ResourceFile"/> location record.</value>
     public Dictionary<string, ResourceFile> FileMap { get; set; }
+    /// <summary>In-memory backing store of the loaded pack's bytes.</summary>
+    /// <value>The decoded pack bytes that <see cref="GetFileBuffer"/> reads slices from.</value>
     private MemoryStream ResourceStream { get; set; }
 
+    /// <summary>Fixed salt fed into PBKDF2 key derivation.</summary>
     private static readonly byte[] Salt =
         new byte[] { 2, 3, 16, 125, 21, 232, 4, 189 };
 
+    /// <summary>Creates an empty pack with a fresh stream and file map.</summary>
     public ResourcePack()
     {
         ResourceStream = new MemoryStream();
         FileMap = new Dictionary<string, ResourceFile>();
     }
 
+    /// <summary>Registers an existing on-disk file (by its size) into the pack's file map.</summary>
+    /// <param name="filePath">Path of the file to register; its byte length is recorded.</param>
+    /// <returns><c>true</c> if the file exists and was added; <c>false</c> if it does not exist.</returns>
     public bool AddFileToPack(string filePath)
     {
         if (File.Exists(filePath))
@@ -30,6 +52,15 @@ public class ResourcePack
         return false;
     }
 
+    /// <summary>Loads a pack from disk per its protection mode (plain/encrypted/scrambled) and reads its file map.</summary>
+    /// <param name="filePath">Path of the pack file to load.</param>
+    /// <param name="protectionMode">How the pack is protected: plain, AES-encrypted, or XOR-scrambled.</param>
+    /// <param name="key">Password required for the encrypted and scrambled modes; ignored for plain.</param>
+    /// <returns><c>true</c> if the pack loaded and is readable; <c>false</c> if the file is missing, a required key is blank, or scrambled (not yet supported) is requested.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="protectionMode"/> is not a recognised value.</exception>
+    /// <exception cref="System.IO.IOException">An I/O error occurs reading the pack file.</exception>
+    /// <exception cref="CryptographicException">Decryption fails (e.g. a wrong <paramref name="key"/>) for the encrypted mode.</exception>
+    /// <seealso cref="SaveResourcePack"/>
     public bool LoadResourcePack(string filePath, ResourcePackProtectionMode protectionMode, string key = "")
     {
 
@@ -60,6 +91,9 @@ public class ResourcePack
         return Loaded();
     }
     
+    /// <summary>Reads an unprotected pack file straight into the resource stream.</summary>
+    /// <param name="filePath">Path of the plain pack file to read.</param>
+    /// <exception cref="System.IO.IOException">An I/O error occurs opening or copying the file.</exception>
     private void LoadPlainResources(string filePath)
     {
 
@@ -77,6 +111,17 @@ public class ResourcePack
         ResourceStream = ms;
     }
 
+    /// <summary>Reads a leading IV then AES-CBC decrypts the pack into the resource stream.</summary>
+    /// <param name="filePath">Path of the encrypted pack file to read.</param>
+    /// <param name="key">Password from which the AES key is derived via <see cref="TransformKey"/>.</param>
+    /// <remarks>
+    /// <para>
+    /// The file begins with the plaintext AES IV (one block); the remaining bytes are the
+    /// AES-256/CBC ciphertext decrypted through a <see cref="CryptoStream"/> into the resource stream.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="System.IO.IOException">An I/O error occurs reading the file.</exception>
+    /// <exception cref="CryptographicException">Decryption fails, e.g. the <paramref name="key"/> is wrong.</exception>
     private void LoadEncryptedResources(string filePath, string key)
     {
         byte[] binaryBuffer;
@@ -118,6 +163,14 @@ public class ResourcePack
         ResourceStream = new MemoryStream(binaryBuffer);
     }
 
+    /// <summary>Parses the pack header (file size, map size) and populates the file map.</summary>
+    /// <remarks>
+    /// <para>
+    /// Reads, in order: the total file size (skipped past), the map entry count, then for each
+    /// entry the file name, byte size, and stream offset, building <see cref="FileMap"/>.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="System.IO.EndOfStreamException">The stream ends before the declared header/map is read.</exception>
     private void ReadBinaryData()
     {
         var br = new BinaryReader(ResourceStream);
@@ -134,6 +187,15 @@ public class ResourcePack
         }
     }
 
+    /// <summary>Writes the pack to disk per its protection mode (plain/encrypted/scrambled).</summary>
+    /// <param name="filePath">Destination path for the pack file.</param>
+    /// <param name="protectionMode">How to protect the pack: plain, AES-encrypted, or XOR-scrambled.</param>
+    /// <param name="key">Password required for the encrypted and scrambled modes; ignored for plain.</param>
+    /// <returns><c>true</c> if the pack was written; <c>false</c> if a required key is blank or scrambled (not yet supported) is requested.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="protectionMode"/> is not a recognised value.</exception>
+    /// <exception cref="System.IO.IOException">An I/O error occurs writing the pack file.</exception>
+    /// <exception cref="CryptographicException">Encryption fails for the encrypted mode.</exception>
+    /// <seealso cref="LoadResourcePack"/>
     public bool SaveResourcePack(string filePath, ResourcePackProtectionMode protectionMode, string key = "")
     {
 
@@ -156,6 +218,10 @@ public class ResourcePack
         return false;
     }
 
+    /// <summary>Writes the pack unencrypted via a BinaryWriter.</summary>
+    /// <param name="filePath">Destination path for the plain pack file.</param>
+    /// <returns>Always <c>true</c> once the write completes.</returns>
+    /// <exception cref="System.IO.IOException">An I/O error occurs writing the file.</exception>
     private bool SavePlainResourcePack(string filePath)
     {
         using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
@@ -168,6 +234,18 @@ public class ResourcePack
         }
         return true;
     }
+    /// <summary>Serialises the pack, then writes the IV followed by the AES-CBC ciphertext.</summary>
+    /// <param name="filePath">Destination path for the encrypted pack file.</param>
+    /// <param name="key">Password from which the AES key is derived via <see cref="TransformKey"/>.</param>
+    /// <returns>Always <c>true</c> once the write completes.</returns>
+    /// <remarks>
+    /// <para>
+    /// Generates a fresh IV, writes it as the file's plaintext prefix, then streams the serialised
+    /// pack bytes through an AES-256/CBC encryptor (<see cref="CryptoStream"/>) into the file.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="System.IO.IOException">An I/O error occurs writing the file.</exception>
+    /// <exception cref="CryptographicException">Encryption fails.</exception>
     private bool SaveEncryptedResources(string filePath, string key)
     {
 
@@ -209,6 +287,16 @@ public class ResourcePack
         return true;
     }
 
+    /// <summary>Writes the header, file map, and file data, then back-patches the total size and per-file offsets.</summary>
+    /// <param name="bw">The writer over the destination stream to serialise into.</param>
+    /// <remarks>
+    /// <para>
+    /// Writes a placeholder total size and the map count, then each map entry (name, size, offset),
+    /// recording the stream position of every offset field. It appends each file's bytes, captures the
+    /// real offsets, then seeks back to patch the total size and each recorded offset position.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="System.IO.IOException">An I/O error occurs reading a source file or writing the stream.</exception>
     private void WriteBinaryData(BinaryWriter bw)
     {
         //Binary Writer inherently knows the size of the type and will write the expected
@@ -271,7 +359,13 @@ public class ResourcePack
         
     }
 
-    // can be used to scramble or unscramble file data with the same key because XOR is cyclical (assumes not byte corruption
+    /// <summary>XOR-cycles file bytes against the key; the same call both scrambles and unscrambles.</summary>
+    /// <param name="fileData">The bytes to scramble or unscramble.</param>
+    /// <param name="key">Password whose characters are XOR-cycled over the data.</param>
+    /// <returns>A new array of XOR-transformed bytes, or the input array unchanged when <paramref name="key"/> is empty.</returns>
+    /// <remarks>
+    /// <para>The transform is its own inverse, so applying it twice with the same key restores the original bytes.</para>
+    /// </remarks>
     public byte[] ScrambleFile(byte[] fileData, string key)
     {
         if (string.IsNullOrEmpty(key))
@@ -291,6 +385,10 @@ public class ResourcePack
 
     }
 
+    /// <summary>Returns a buffer over the named file's bytes within the loaded pack stream.</summary>
+    /// <param name="filePath">In-pack file name (a <see cref="FileMap"/> key) to extract.</param>
+    /// <returns>A <see cref="ResourceBuffer"/> holding the file's bytes, or an empty buffer when no pack is loaded.</returns>
+    /// <exception cref="KeyNotFoundException"><paramref name="filePath"/> is not present in <see cref="FileMap"/>.</exception>
     public ResourceBuffer GetFileBuffer(string filePath)
     {
         if (Loaded())
@@ -300,16 +398,34 @@ public class ResourcePack
 
         return new ResourceBuffer();
     }
+    /// <summary>True when a pack stream is loaded and readable.</summary>
+    /// <returns><c>true</c> if the resource stream is readable; otherwise <c>false</c>.</returns>
     public bool Loaded()
     {
         return ResourceStream.CanRead;
     }
-    
+
+    /// <summary>Normalises a path to POSIX separators (backslash to forward slash).</summary>
+    /// <param name="path">The path to convert.</param>
+    /// <returns>The path with every backslash replaced by a forward slash.</returns>
+    /// <remarks>
+    /// <para>Pack file names are stored with POSIX separators so a pack built on Windows resolves identically on other platforms.</para>
+    /// </remarks>
     public string MakePosixPath(string path)
     {
         return path.Replace("\\", "/");
     }
 
+    /// <summary>Derives a 256-bit AES key from the password via PBKDF2 (SHA-512) over the fixed salt.</summary>
+    /// <param name="password">The user password to stretch into a key.</param>
+    /// <param name="keyBytes">Derived key length in bytes; defaults to 32 (256 bits) for AES-256.</param>
+    /// <returns>The PBKDF2-derived key of <paramref name="keyBytes"/> bytes.</returns>
+    /// <remarks>
+    /// <para>
+    /// Uses <see cref="Rfc2898DeriveBytes"/> with SHA-512 over the fixed <c>Salt</c> and a high iteration
+    /// count, so a given password and salt always yield the same key for both encrypt and decrypt.
+    /// </para>
+    /// </remarks>
     private static byte[] TransformKey(string password, int keyBytes = 32)
     {
         //TODO: make this configurable

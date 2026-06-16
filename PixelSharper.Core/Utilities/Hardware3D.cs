@@ -8,23 +8,41 @@ using PixelSharper.Core.Types;
 
 namespace PixelSharper.Core.Utilities.Hardware3D;
 
+/// <summary>A 3D mesh container whose fields match what the engine's HW3D_DrawObject consumes directly (pos = float[x,y,z,w], uv = float[u,v], per-vertex Pixel colour).</summary>
+/// <remarks>Pair with <see cref="Vector3d"/>/<see cref="Matrix4x4"/> and a <see cref="Camera3D"/> for the transforms; build instances via <see cref="Hw3d"/>.</remarks>
+/// <seealso cref="Hw3d"/>
 // Port of olc::utils::hw3d — a 3D mesh container plus factory/ray helpers. The mesh fields match
 // the shape the engine's HW3D_DrawObject consumes directly (pos = float[x,y,z,w], uv = float[u,v],
 // per-vertex Pixel colour). Pair with Vector3d/Matrix4x4 and a Camera3D for the transforms.
 public class Mesh
 {
+    /// <summary>Per-vertex positions as float[x,y,z,w].</summary>
     public List<float[]> Pos = new();
+    /// <summary>Per-vertex normals as float[x,y,z,w].</summary>
     public List<float[]> Norm = new();
+    /// <summary>Per-vertex texture coordinates as float[u,v].</summary>
     public List<float[]> Uv = new();
+    /// <summary>Per-vertex colours.</summary>
     public List<Pixel> Col = new();
+    /// <summary>Primitive layout the vertices form (List/Strip/Fan).</summary>
     public DecalStructure Layout = DecalStructure.List;
 }
 
+/// <summary>Static factory and ray-test helpers for hw3d meshes (cube builders, OBJ loader, ray/triangle/plane/mesh intersections).</summary>
 public static class Hw3d
 {
+    /// <summary>Machine epsilon for float (numeric_limits.float.epsilon), NOT C#'s float.Epsilon (denormal).</summary>
     // Machine epsilon for float (numeric_limits<float>::epsilon), NOT C#'s float.Epsilon (denormal).
     private const float Epsilon = 1.1920929e-7f;
 
+    /// <summary>Appends one vertex (position, normal, UV, white colour) to the mesh.</summary>
+    /// <param name="m">Mesh to append to.</param>
+    /// <param name="p">Vertex position (w is set to 1).</param>
+    /// <param name="nx">Normal X component.</param>
+    /// <param name="ny">Normal Y component.</param>
+    /// <param name="nz">Normal Z component.</param>
+    /// <param name="u">Texture U coordinate.</param>
+    /// <param name="v">Texture V coordinate.</param>
     private static void Push(Mesh m, Vector3d p, float nx, float ny, float nz, float u, float v)
     {
         m.Pos.Add(new[] { p.X, p.Y, p.Z, 1f });
@@ -33,6 +51,9 @@ public static class Hw3d
         m.Col.Add(Pixel.WHITE);
     }
 
+    /// <summary>Builds a unit cube whose UVs index a 4x3 cube-net texture (faces laid out cross-style).</summary>
+    /// <returns>A <see cref="DecalStructure.List"/>-layout unit cube mesh (36 vertices, 12 triangles).</returns>
+    /// <seealso cref="CreateCube"/>
     // A unit cube whose UVs index a 4x3 cube-net texture (faces laid out cross-style).
     public static Mesh CreateSanityCube()
     {
@@ -82,6 +103,11 @@ public static class Hw3d
         return m;
     }
 
+    /// <summary>Builds a box of the given size (with optional offset), each face UV-mapped to the full [0,1] square.</summary>
+    /// <param name="size">Box dimensions along X, Y and Z.</param>
+    /// <param name="offset">World-space offset added to every corner; defaults to the origin.</param>
+    /// <returns>A <see cref="DecalStructure.List"/>-layout box mesh (36 vertices, 12 triangles).</returns>
+    /// <seealso cref="CreateSanityCube"/>
     // A box of the given size (with optional offset), each face UV-mapped to the full [0,1] square.
     public static Mesh CreateCube(Vector3d size, Vector3d offset = default)
     {
@@ -115,6 +141,10 @@ public static class Hw3d
         return m;
     }
 
+    /// <summary>Loads a Wavefront .obj (expects v/vt/vn triangle faces; X is negated to match olc's handedness). Returns null if the file can't be opened.</summary>
+    /// <param name="path">Filesystem path to the .obj file.</param>
+    /// <returns>A <see cref="DecalStructure.List"/>-layout mesh of the triangle faces, or <c>null</c> if <paramref name="path"/> does not exist.</returns>
+    /// <remarks>Only triangle (3-vertex) faces are emitted; quads and larger polygons are skipped. OBJ indices are 1-based.</remarks>
     // Loads a Wavefront .obj (expects v/vt/vn faces; x is negated to match olc's handedness).
     // Returns null if the file can't be opened.
     public static Mesh LoadObj(string path)
@@ -167,8 +197,22 @@ public static class Hw3d
         return m;
     }
 
+    /// <summary>Packs a Vector3d into a float[x,y,z,w] array.</summary>
+    /// <param name="v">Vector to pack.</param>
+    /// <returns>A 4-element array <c>{ v.X, v.Y, v.Z, v.W }</c>.</returns>
     private static float[] Arr4(Vector3d v) => new[] { v.X, v.Y, v.Z, v.W };
 
+    /// <summary>Moller-Trumbore ray/triangle test. Returns the hit point and distance t, or null on a miss.</summary>
+    /// <param name="origin">Ray origin in world space.</param>
+    /// <param name="dir">Ray direction in world space.</param>
+    /// <param name="ta">First triangle vertex.</param>
+    /// <param name="tb">Second triangle vertex.</param>
+    /// <param name="tc">Third triangle vertex.</param>
+    /// <returns>A tuple of the world-space hit point and the ray parameter <c>T</c> at the hit, or <c>null</c> if the ray misses or is parallel to the triangle.</returns>
+    /// <remarks>
+    /// <para>Implements the Moller-Trumbore algorithm: barycentric coordinates are solved via scalar triple products, rejecting hits outside the triangle or behind the origin.</para>
+    /// <para>Tolerances use the machine <see cref="Epsilon"/>, not C#'s denormal <c>float.Epsilon</c>.</para>
+    /// </remarks>
     // Möller–Trumbore ray/triangle test. Returns the hit point and distance t, or null.
     public static (Vector3d Point, float T)? RayVsTriangle(Vector3d origin, Vector3d dir, Vector3d ta, Vector3d tb, Vector3d tc)
     {
@@ -191,6 +235,12 @@ public static class Hw3d
         return t > Epsilon ? (origin + dir * t, t) : null;
     }
 
+    /// <summary>Intersects a ray with an infinite plane. Returns the point, or null if parallel.</summary>
+    /// <param name="origin">Ray origin in world space.</param>
+    /// <param name="dir">Ray direction in world space.</param>
+    /// <param name="planeP">A point lying on the plane.</param>
+    /// <param name="planeN">The plane normal.</param>
+    /// <returns>The world-space intersection point, or <c>null</c> if the ray is parallel to the plane.</returns>
     // Intersection of a ray with an (infinite) plane. Returns the point, or null if parallel.
     public static Vector3d? RayVsPlane(Vector3d origin, Vector3d dir, Vector3d planeP, Vector3d planeN)
     {
@@ -203,6 +253,13 @@ public static class Hw3d
         return origin + dir * t;
     }
 
+    /// <summary>Tests a ray against every triangle of a LIST-layout mesh; returns (distance, vertex indices), sorted nearest-first by default.</summary>
+    /// <param name="origin">Ray origin in world space.</param>
+    /// <param name="dir">Ray direction in world space.</param>
+    /// <param name="m">Mesh to test; only a <see cref="DecalStructure.List"/> layout is supported.</param>
+    /// <param name="sort">When <c>true</c>, the hits are sorted nearest-first by distance.</param>
+    /// <returns>A list of tuples each holding the hit distance and the three vertex indices of the struck triangle; empty if the ray misses or the mesh is not <see cref="DecalStructure.List"/>.</returns>
+    /// <remarks>Strip and fan layouts are not yet implemented (olc leaves these as TODO). Each triangle is tested via <see cref="RayVsTriangle"/>.</remarks>
     // Tests a ray against every triangle of a LIST-layout mesh; returns (distance, vertex indices),
     // sorted nearest-first by default.
     public static List<(float Dist, int I0, int I1, int I2)> RayVsMesh(Vector3d origin, Vector3d dir, Mesh m, bool sort = true)

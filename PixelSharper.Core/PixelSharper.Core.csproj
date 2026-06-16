@@ -7,6 +7,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>11</LangVersion>
+        <!-- Emit the XML doc file (packed into the .nupkg for consumer IntelliSense) and let the
+             compiler validate that every parameter/return has a matching doc tag. -->
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
 
     <!-- NuGet package metadata: `dotnet pack -c Release` produces a referenceable .nupkg whose

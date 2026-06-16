@@ -3,21 +3,44 @@ using System.Runtime.InteropServices;
 
 namespace PixelSharper.Core.Types;
 
-// Mirrors olc::GPUTask::Vertex: `struct Vertex { float p[6]; uint32_t c; };`
-// p holds the homogeneous position (x, y, z, w) followed by texture coords (u, v),
-// and c is the packed RGBA colour. Laid out sequentially and kept allocation-free so a
-// List<Vertex> can be uploaded to the GPU as an interleaved vertex buffer as-is.
+/// <summary>Mirrors olc::GPUTask::Vertex (float p[6] + uint32 c): homogeneous position (x,y,z,w), texture coords (u,v), and a packed RGBA colour, laid out sequentially so a List of these uploads as an interleaved vertex buffer.</summary>
+/// <remarks>
+/// <para>The <see cref="StructLayoutAttribute"/> with <see cref="LayoutKind.Sequential"/> keeps the fields in declaration order so a contiguous list of vertices is a valid interleaved vertex buffer.</para>
+/// </remarks>
+/// <seealso cref="GPUTask"/>
 [StructLayout(LayoutKind.Sequential)]
 public struct Vertex
 {
+    /// <summary>Position X.</summary>
+    /// <value>The x coordinate (indexer slot 0).</value>
     public float X;
+    /// <summary>Position Y.</summary>
+    /// <value>The y coordinate (indexer slot 1).</value>
     public float Y;
+    /// <summary>Position Z.</summary>
+    /// <value>The z coordinate (indexer slot 2).</value>
     public float Z;
+    /// <summary>Homogeneous W.</summary>
+    /// <value>The homogeneous w coordinate (indexer slot 3).</value>
     public float W;
+    /// <summary>Texture U coordinate.</summary>
+    /// <value>The texture u coordinate (indexer slot 4).</value>
     public float U;
+    /// <summary>Texture V coordinate.</summary>
+    /// <value>The texture v coordinate (indexer slot 5).</value>
     public float V;
+    /// <summary>Packed RGBA colour.</summary>
+    /// <value>The colour packed as a 32-bit RGBA value.</value>
     public uint C;
 
+    /// <summary>Constructs a vertex from explicit components.</summary>
+    /// <param name="x">Position X.</param>
+    /// <param name="y">Position Y.</param>
+    /// <param name="z">Position Z.</param>
+    /// <param name="w">Homogeneous W.</param>
+    /// <param name="u">Texture U coordinate.</param>
+    /// <param name="v">Texture V coordinate.</param>
+    /// <param name="c">Packed RGBA colour.</param>
     public Vertex(float x, float y, float z, float w, float u, float v, uint c)
     {
         X = x;
@@ -29,6 +52,11 @@ public struct Vertex
         C = c;
     }
 
+    /// <summary>Constructs a vertex from a 6-element position/UV array and a packed colour.</summary>
+    /// <param name="p">A 6-element array <c>[x, y, z, w, u, v]</c>.</param>
+    /// <param name="c">Packed RGBA colour.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="p"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="p"/> does not contain exactly 6 elements.</exception>
     public Vertex(float[] p, uint c) : this()
     {
         if (p == null)
@@ -45,7 +73,11 @@ public struct Vertex
         C = c;
     }
 
-    // Indexer reproducing C++ `vertex.p[i]` access over the six float components.
+    /// <summary>Indexer reproducing C++ vertex.p[i] access over the six float components (0..5).</summary>
+    /// <param name="index">Component index: 0=X, 1=Y, 2=Z, 3=W, 4=U, 5=V.</param>
+    /// <value>The component at <paramref name="index"/>.</value>
+    /// <returns>The float component at <paramref name="index"/>.</returns>
+    /// <exception cref="IndexOutOfRangeException">Thrown when <paramref name="index"/> is outside the range 0..5.</exception>
     public float this[int index]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
