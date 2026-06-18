@@ -152,6 +152,60 @@ namespace PixelSharperTests
                 Assert.AreEqual(refTarget.PixelData[i].N, simdTarget.PixelData[i].N, $"pixel {i} (x={i % w})");
         }
 
+        // A sprite with a full range of per-pixel alpha (and varied colour), to exercise the Alpha/Mask blits.
+        private static Sprite MakeAlphaSprite(int w, int h)
+        {
+            var s = new Sprite(w, h);
+            for (var y = 0; y < h; y++)
+                for (var x = 0; x < w; x++)
+                    s.SetPixel(x, y, new Pixel((byte)(x * 9 + 1), (byte)(y * 11 + 2), (byte)(x + y), (byte)((x * 17 + y * 23) & 0xFF)));
+            return s;
+        }
+
+        [Test]
+        public void DrawSprite_Alpha_SpanMatchesPerPixelDraw([Values(3, -4, 0)] int posX)
+        {
+            // The 1:1 Alpha-mode span fast path must produce exactly what plotting each pixel through the
+            // Draw() Alpha path would, including when the sprite clips off the left/top edge (posX = -4).
+            const int tw = 24, th = 16;
+            var src = MakeAlphaSprite(15, 11);
+            const int posY = 2;
+
+            var (er, tr) = NewTarget(tw, th);
+            er.SetPixelMode(PixelDisplayMode.Alpha);
+            for (var j = 0; j < src.Height; j++)
+                for (var i = 0; i < src.Width; i++)
+                    er.Draw(posX + i, posY + j, src.GetPixel(i, j)); // per-pixel reference
+
+            var (es, ts) = NewTarget(tw, th);
+            es.SetPixelMode(PixelDisplayMode.Alpha);
+            es.DrawSprite(posX, posY, src); // span fast path
+
+            for (var k = 0; k < tw * th; k++)
+                Assert.AreEqual(tr.PixelData[k].N, ts.PixelData[k].N, $"pixel {k} (x={k % tw},y={k / tw})");
+        }
+
+        [Test]
+        public void DrawSprite_Mask_SpanMatchesPerPixelDraw([Values(3, -4)] int posX)
+        {
+            const int tw = 24, th = 16;
+            var src = MakeAlphaSprite(15, 11);
+            const int posY = 2;
+
+            var (er, tr) = NewTarget(tw, th);
+            er.SetPixelMode(PixelDisplayMode.Mask);
+            for (var j = 0; j < src.Height; j++)
+                for (var i = 0; i < src.Width; i++)
+                    er.Draw(posX + i, posY + j, src.GetPixel(i, j));
+
+            var (es, ts) = NewTarget(tw, th);
+            es.SetPixelMode(PixelDisplayMode.Mask);
+            es.DrawSprite(posX, posY, src);
+
+            for (var k = 0; k < tw * th; k++)
+                Assert.AreEqual(tr.PixelData[k].N, ts.PixelData[k].N, $"pixel {k}");
+        }
+
         [Test]
         public void DrawSprite_ClipsLeftTopAndRightBottom()
         {

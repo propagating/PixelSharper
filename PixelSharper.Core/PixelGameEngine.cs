@@ -1743,6 +1743,32 @@ public abstract class PixelGameEngine
         }
     }
 
+    /// <summary>Alpha-blends a variable source row over a destination row (the per-pixel-alpha "source-over" used by Alpha-mode sprite blits), bit-exact with <see cref="Draw(int, int, Pixel)"/>'s Alpha case.</summary>
+    /// <param name="dst">The destination pixel row, blended in place.</param>
+    /// <param name="src">The source pixel row (each pixel carries its own alpha).</param>
+    /// <param name="blend">The global blend factor scaling each source alpha.</param>
+    /// <remarks>Scalar by design: unlike the constant-source case, SIMD here must widen both src and dst and broadcast each pixel's alpha, which measured slower than this loop (see BlitBenchmarks). Output alpha is forced to 255, matching the Pixel(byte,byte,byte) ctor used by Draw.</remarks>
+    private static void BlendRowOver(Span<Pixel> dst, ReadOnlySpan<Pixel> src, float blend)
+    {
+        for (var i = 0; i < dst.Length; i++)
+        {
+            var s = src[i];
+            var d = dst[i];
+            var a = s.Alpha / 255.0f * blend;
+            var c = 1.0f - a;
+            dst[i] = new Pixel((byte)(a * s.Red + c * d.Red), (byte)(a * s.Green + c * d.Green), (byte)(a * s.Blue + c * d.Blue));
+        }
+    }
+
+    /// <summary>Copies a source row over a destination row only where the source pixel is fully opaque, bit-exact with <see cref="Draw(int, int, Pixel)"/>'s Mask case.</summary>
+    /// <param name="dst">The destination pixel row, overwritten in place where the source is opaque.</param>
+    /// <param name="src">The source pixel row; only pixels with alpha 255 are written.</param>
+    private static void MaskRowOver(Span<Pixel> dst, ReadOnlySpan<Pixel> src)
+    {
+        for (var i = 0; i < dst.Length; i++)
+            if (src[i].Alpha == 255) dst[i] = src[i];
+    }
+
     /// <summary>Vector2d overload of <see cref="DrawTriangle(int, int, int, int, int, int, Pixel)"/>.</summary>
     /// <param name="pos1">First vertex.</param>
     /// <param name="pos2">Second vertex.</param>
@@ -1942,6 +1968,33 @@ public abstract class PixelGameEngine
                     var dy = y + j;
                     if (dy < 0 || dy >= dh) continue;       // ...and the row
                     src.Slice(j * sprite.Width + (cx0 - x), len).CopyTo(dst.Slice(dy * dw + cx0, len));
+                }
+            return;
+        }
+
+        // Fast path: a 1:1, unflipped blit in Alpha or Mask mode blends whole clipped rows via a span loop
+        // (BlendRowOver / MaskRowOver) instead of plotting each pixel through Draw() — same math, bit-exact,
+        // but without the per-pixel virtual call / pixel-mode switch / List-indexer overhead. (Measured
+        // ~4x. SIMD was evaluated for the per-pixel-alpha blend and was slower than this scalar span — the
+        // src+dst widen and per-pixel alpha-broadcast cost more than the arithmetic saved; see BlitBenchmarks.)
+        if (blitTarget != null && scale == 1 && flip == SpriteMirrorMode.None &&
+            (_pixelMode == PixelDisplayMode.Alpha || _pixelMode == PixelDisplayMode.Mask))
+        {
+            int dw = blitTarget.Width, dh = blitTarget.Height;
+            var dst = CollectionsMarshal.AsSpan(blitTarget.PixelData);
+            var src = CollectionsMarshal.AsSpan(sprite.PixelData);
+            var cx0 = Math.Max(0, x);
+            var cx1 = Math.Min(dw, x + sprite.Width);
+            var len = cx1 - cx0;
+            if (len > 0)
+                for (var j = 0; j < sprite.Height; j++)
+                {
+                    var dy = y + j;
+                    if (dy < 0 || dy >= dh) continue;
+                    var srcRow = src.Slice(j * sprite.Width + (cx0 - x), len);
+                    var dstRow = dst.Slice(dy * dw + cx0, len);
+                    if (_pixelMode == PixelDisplayMode.Alpha) BlendRowOver(dstRow, srcRow, _blendFactor);
+                    else MaskRowOver(dstRow, srcRow);
                 }
             return;
         }
