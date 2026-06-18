@@ -481,6 +481,11 @@ public abstract class PixelGameEngine
             }
         }
 
+        // Free textures whose Decals were finalized since the last frame. This runs on the GL thread
+        // (where the context is current); ~Decal() only enqueues, because GL is invalid on the GC
+        // finalizer thread. Done before DisplayFrame so it always runs, including manual-render mode.
+        _renderer.ProcessPendingTextureDeletes();
+
         // Present to screen
         _renderer.DisplayFrame();
 

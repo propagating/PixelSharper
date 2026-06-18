@@ -1,5 +1,6 @@
 // File: PixelSharper.Core/Components/Renderer.cs
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using PixelSharper.Core.Actions;
 using PixelSharper.Core.Enums;
@@ -36,6 +37,28 @@ namespace PixelSharper.Core.Components
         /// the platform layer once a concrete <see cref="Renderer"/> is constructed.
         /// </summary>
         public static Renderer Active;
+
+        /// <summary>
+        /// Texture ids awaiting deletion on the GL thread. GL calls are only valid on the thread that
+        /// owns the context, but <c>~Decal()</c> runs on the GC finalizer thread — calling
+        /// <see cref="DeleteTexture"/> from there dereferences the driver with no current context and
+        /// throws <see cref="AccessViolationException"/>. So finalizers enqueue here instead, and the
+        /// engine drains the queue via <see cref="ProcessPendingTextureDeletes"/> each frame.
+        /// </summary>
+        private static readonly ConcurrentQueue<uint> PendingTextureDeletes = new();
+
+        /// <summary>Queues a GL texture id for deletion on the GL thread. Safe to call from any thread
+        /// (notably a GC finalizer), as it performs no GL work — it only enqueues.</summary>
+        /// <param name="id">The GL texture id to delete later.</param>
+        public static void ScheduleTextureDelete(uint id) => PendingTextureDeletes.Enqueue(id);
+
+        /// <summary>Deletes all queued textures. MUST be called on the thread that owns the GL context
+        /// (the engine frame loop), where <see cref="DeleteTexture"/> is valid.</summary>
+        public void ProcessPendingTextureDeletes()
+        {
+            while (PendingTextureDeletes.TryDequeue(out var id))
+                DeleteTexture(id);
+        }
 
         /// <summary>Performs one-time device preparation before a graphics context exists.</summary>
         public abstract void PrepareDevice();

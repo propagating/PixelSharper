@@ -106,12 +106,15 @@ public class Decal
         return patch;
     }
 
-    /// <summary>Finalizer; deletes the GPU texture if one is held.</summary>
+    /// <summary>Finalizer; queues the GPU texture for deletion on the GL thread if one is held.</summary>
+    /// <remarks>The finalizer runs on the GC finalizer thread, which has no current GL context, so it must
+    /// not call GL directly (that throws <see cref="System.AccessViolationException"/>). It enqueues the id
+    /// via <see cref="Renderer.ScheduleTextureDelete"/>; the engine frame loop frees it on the GL thread.</remarks>
     ~Decal()
     {
         if (Id != -1)
         {
-            Renderer.Active.DeleteTexture((uint)Id);
+            Renderer.ScheduleTextureDelete((uint)Id);
             Id = -1;
         }
     }
