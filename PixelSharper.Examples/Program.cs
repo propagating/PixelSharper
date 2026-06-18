@@ -24,6 +24,7 @@ var scenes = new IExampleScene[]
     new QuadTreeScene(),
     new DataFileScene(),
     new QuickGuiScene(),
+    new PerfMonitorScene(),
     new FinaleScene(),
 };
 
