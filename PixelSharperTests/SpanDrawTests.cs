@@ -115,6 +115,44 @@ namespace PixelSharperTests
         }
 
         [Test]
+        public void FillRect_Alpha_SimdBlendMatchesPerPixelDraw_AcrossBlocksAndTail()
+        {
+            // Width 67 forces the SIMD constant-blend to cross several Vector256 (8px) and Vector128 (4px)
+            // blocks AND leave a scalar remainder; a per-pixel gradient gives every lane a distinct dst.
+            // The per-pixel Draw() Alpha path is the scalar reference the SIMD span path must match exactly.
+            const int w = 67, h = 3;
+            var src = new Pixel(200, 50, 10, 128);
+
+            Sprite Fill()
+            {
+                var s = new Sprite(w, h);
+                for (var y = 0; y < h; y++)
+                    for (var x = 0; x < w; x++)
+                        s.PixelData[y * w + x] = new Pixel((byte)(x * 3 + 1), (byte)(x * 5 + 2), (byte)(x * 7 + y), (byte)x);
+                return s;
+            }
+
+            // Reference: per-pixel Draw() over every pixel.
+            var refEngine = new TestEngine();
+            var refTarget = Fill();
+            refEngine.SetDrawTarget(refTarget);
+            refEngine.SetPixelMode(PixelDisplayMode.Alpha);
+            for (var y = 0; y < h; y++)
+                for (var x = 0; x < w; x++)
+                    refEngine.Draw(x, y, src);
+
+            // Subject: the SIMD span blend via FillRect over the whole region.
+            var simdEngine = new TestEngine();
+            var simdTarget = Fill();
+            simdEngine.SetDrawTarget(simdTarget);
+            simdEngine.SetPixelMode(PixelDisplayMode.Alpha);
+            simdEngine.FillRect(0, 0, w, h, src);
+
+            for (var i = 0; i < w * h; i++)
+                Assert.AreEqual(refTarget.PixelData[i].N, simdTarget.PixelData[i].N, $"pixel {i} (x={i % w})");
+        }
+
+        [Test]
         public void DrawSprite_ClipsLeftTopAndRightBottom()
         {
             var (e, t) = NewTarget(8, 8);
