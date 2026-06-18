@@ -20,10 +20,13 @@
 //   We run that straight over the destination row span — the SAME float math (so bit-exact) but without
 //   the per-pixel method/switch/indexer overhead.
 //
-// WHY IT'S FASTER (and why we stopped at scalar)
+// WHY IT'S FASTER (and the SIMD follow-up)
 //   Removing the overhead is ~4x here. The remaining cost is the arithmetic itself. Byte-level SIMD
-//   (Vector256) could shave the arithmetic further, but matching the scalar float truncation byte-exact
-//   is fiddly and risky, so the engine ships the exact scalar span blend. This script lets you compare.
+//   (Vector256) was then actually implemented — and it IS bit-exact (IEEE-754 float mul/add match the
+//   scalar C# float ops, and the truncating float->int conversion matches the (byte) cast exactly) AND
+//   ~4.3x faster. So the engine now ships a Vector256 -> Vector128 -> scalar dispatch for the constant
+//   blend. See AlphaBlendIntrinsics.linq for the scalar-vs-SIMD comparison. This script lets you compare
+//   the per-pixel and scalar-span paths.
 // ===========================================================================================
 
 [StructLayout(LayoutKind.Sequential, Pack = 1, Size = 4)]
