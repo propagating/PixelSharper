@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <!-- Pure library output (default OutputType = Library). net8.0 is the current LTS; the floor is
-         net7.0 because the engine relies on static-abstract interface members / generic math. -->
+    <!-- Pure library output (default OutputType = Library). net10.0 (current); the engine relies on
+         static-abstract interface members / generic math (net7+) and C# 14 extension members. -->
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <LangVersion>11</LangVersion>
+        <LangVersion>latestmajor</LangVersion>
         <!-- Emit the XML doc file (packed into the .nupkg for consumer IntelliSense) and let the
              compiler validate that every parameter/return has a matching doc tag. -->
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
