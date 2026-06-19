@@ -50,7 +50,7 @@ public struct Line<T> where T : struct, INumber<T>, IEquatable<T>, IComparable<T
     /// <returns><c>-1</c> on one side, <c>+1</c> on the other, or <c>0</c> if the point is on the line.</returns>
     public int Side(Vector2d<T> point)
     {
-        var d = Convert.ToDouble(Vector().CrossProduct<T, T>(point - Start));
+        var d = double.CreateChecked(Vector().CrossProduct<T, T>(point - Start));
         return d < 0 ? -1 : d > 0 ? 1 : 0;
     }
 }
@@ -176,9 +176,9 @@ public struct Triangle<T> where T : struct, INumber<T>, IEquatable<T>, IComparab
     public T Area()
     {
         var a = 0.5 * Math.Abs(
-            Convert.ToDouble(P0.X) * (Convert.ToDouble(P1.Y) - Convert.ToDouble(P2.Y)) +
-            Convert.ToDouble(P1.X) * (Convert.ToDouble(P2.Y) - Convert.ToDouble(P0.Y)) +
-            Convert.ToDouble(P2.X) * (Convert.ToDouble(P0.Y) - Convert.ToDouble(P1.Y)));
+            double.CreateChecked(P0.X) * (double.CreateChecked(P1.Y) - double.CreateChecked(P2.Y)) +
+            double.CreateChecked(P1.X) * (double.CreateChecked(P2.Y) - double.CreateChecked(P0.Y)) +
+            double.CreateChecked(P2.X) * (double.CreateChecked(P0.Y) - double.CreateChecked(P1.Y)));
         return T.CreateChecked(a);
     }
 
@@ -200,12 +200,12 @@ public static class Geom2D
     /// <typeparam name="T">The numeric component type.</typeparam>
     /// <param name="v">The vector.</param>
     /// <returns>The X component converted to <c>double</c>.</returns>
-    private static double Dx<T>(Vector2d<T> v) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Convert.ToDouble(v.X);
+    private static double Dx<T>(Vector2d<T> v) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => double.CreateChecked(v.X);
     /// <summary>The Y component of a vector as a double.</summary>
     /// <typeparam name="T">The numeric component type.</typeparam>
     /// <param name="v">The vector.</param>
     /// <returns>The Y component converted to <c>double</c>.</returns>
-    private static double Dy<T>(Vector2d<T> v) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => Convert.ToDouble(v.Y);
+    private static double Dy<T>(Vector2d<T> v) where T : struct, INumber<T>, IEquatable<T>, IComparable<T> => double.CreateChecked(v.Y);
 
     /// <summary>Squared distance between two points, computed in double.</summary>
     /// <typeparam name="T">The numeric component type.</typeparam>
@@ -249,7 +249,7 @@ public static class Geom2D
         double dx = Dx(p) - Dx(c.Pos), dy = Dy(p) - Dy(c.Pos);
         var len = Math.Sqrt(dx * dx + dy * dy);
         if (len == 0) return c.Pos;
-        var r = Convert.ToDouble(c.Radius);
+        var r = double.CreateChecked(c.Radius);
         return new Vector2d<T>(T.CreateChecked(Dx(c.Pos) + dx / len * r), T.CreateChecked(Dy(c.Pos) + dy / len * r));
     }
 
@@ -329,7 +329,7 @@ public static class Geom2D
     /// <returns><c>true</c> if <paramref name="p"/> is inside or on <paramref name="c"/>; otherwise <c>false</c>.</returns>
     /// <seealso cref="Overlaps{T}(Circle{T}, Vector2d{T})"/>
     public static bool Contains<T>(Circle<T> c, Vector2d<T> p) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
-        => Dist2(c.Pos, p) <= Convert.ToDouble(c.Radius) * Convert.ToDouble(c.Radius);
+        => Dist2(c.Pos, p) <= double.CreateChecked(c.Radius) * double.CreateChecked(c.Radius);
 
     /// <summary>True if a point is inside the triangle (barycentric test).</summary>
     /// <typeparam name="T">The numeric component type.</typeparam>
@@ -361,7 +361,7 @@ public static class Geom2D
     /// <returns><c>true</c> if <paramref name="r"/> fully contains <paramref name="c"/>; otherwise <c>false</c>.</returns>
     public static bool Contains<T>(Rect<T> r, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
     {
-        var rad = Convert.ToDouble(c.Radius);
+        var rad = double.CreateChecked(c.Radius);
         return Dx(r.Pos) + rad <= Dx(c.Pos) && Dx(c.Pos) <= Dx(r.Pos) + Dx(r.Size) - rad
             && Dy(r.Pos) + rad <= Dy(c.Pos) && Dy(c.Pos) <= Dy(r.Pos) + Dy(r.Size) - rad;
     }
@@ -372,7 +372,7 @@ public static class Geom2D
     /// <param name="inner">The candidate inner circle.</param>
     /// <returns><c>true</c> if <paramref name="outer"/> fully contains <paramref name="inner"/>; otherwise <c>false</c>.</returns>
     public static bool Contains<T>(Circle<T> outer, Circle<T> inner) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
-        => Math.Sqrt(Dist2(inner.Pos, outer.Pos)) + Convert.ToDouble(inner.Radius) <= Convert.ToDouble(outer.Radius);
+        => Math.Sqrt(Dist2(inner.Pos, outer.Pos)) + double.CreateChecked(inner.Radius) <= double.CreateChecked(outer.Radius);
 
     // O--- Overlaps ---O
     /// <summary>True if a point overlaps the rectangle.</summary>
@@ -413,7 +413,7 @@ public static class Geom2D
     /// <returns><c>true</c> if the circles overlap; otherwise <c>false</c>.</returns>
     public static bool Overlaps<T>(Circle<T> a, Circle<T> b) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
     {
-        var r = Convert.ToDouble(a.Radius) + Convert.ToDouble(b.Radius);
+        var r = double.CreateChecked(a.Radius) + double.CreateChecked(b.Radius);
         return Dist2(a.Pos, b.Pos) <= r * r;
     }
 
@@ -428,7 +428,7 @@ public static class Geom2D
         var cx = Math.Clamp(Dx(c.Pos), Dx(r.Pos), Dx(r.Pos) + Dx(r.Size));
         var cy = Math.Clamp(Dy(c.Pos), Dy(r.Pos), Dy(r.Pos) + Dy(r.Size));
         var dx = cx - Dx(c.Pos); var dy = cy - Dy(c.Pos);
-        return dx * dx + dy * dy - Convert.ToDouble(c.Radius) * Convert.ToDouble(c.Radius) < 0;
+        return dx * dx + dy * dy - double.CreateChecked(c.Radius) * double.CreateChecked(c.Radius) < 0;
     }
 
     /// <summary>True if a rectangle overlaps a circle.</summary>
@@ -486,7 +486,7 @@ public static class Geom2D
     /// <returns><c>true</c> if <paramref name="c"/> overlaps <paramref name="l"/>; otherwise <c>false</c>.</returns>
     /// <seealso cref="Overlaps{T}(Line{T}, Circle{T})"/>
     public static bool Overlaps<T>(Circle<T> c, Line<T> l) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
-        => Dist2(c.Pos, Closest(l, c.Pos)) <= Convert.ToDouble(c.Radius) * Convert.ToDouble(c.Radius);
+        => Dist2(c.Pos, Closest(l, c.Pos)) <= double.CreateChecked(c.Radius) * double.CreateChecked(c.Radius);
     /// <summary>True if a line segment overlaps a circle.</summary>
     /// <typeparam name="T">The numeric component type.</typeparam>
     /// <param name="l">The line segment.</param>
@@ -534,7 +534,7 @@ public static class Geom2D
     /// <returns><c>true</c> if <paramref name="t"/> overlaps <paramref name="c"/>; otherwise <c>false</c>.</returns>
     /// <seealso cref="Overlaps{T}(Circle{T}, Triangle{T})"/>
     public static bool Overlaps<T>(Triangle<T> t, Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
-        => Contains(t, c.Pos) || Dist2(c.Pos, Closest(t, c.Pos)) <= Convert.ToDouble(c.Radius) * Convert.ToDouble(c.Radius);
+        => Contains(t, c.Pos) || Dist2(c.Pos, Closest(t, c.Pos)) <= double.CreateChecked(c.Radius) * double.CreateChecked(c.Radius);
     /// <summary>True if a circle overlaps a triangle.</summary>
     /// <typeparam name="T">The numeric component type.</typeparam>
     /// <param name="c">The circle.</param>
@@ -606,7 +606,7 @@ public static class Geom2D
         var uLine = (dx * (Dx(c.Pos) - Dx(l.Start)) + dy * (Dy(c.Pos) - Dy(l.Start))) / mag2;
         double clX = Dx(l.Start) + uLine * dx, clY = Dy(l.Start) + uLine * dy;
         var distToLine = (Dx(c.Pos) - clX) * (Dx(c.Pos) - clX) + (Dy(c.Pos) - clY) * (Dy(c.Pos) - clY);
-        var r2 = Convert.ToDouble(c.Radius) * Convert.ToDouble(c.Radius);
+        var r2 = double.CreateChecked(c.Radius) * double.CreateChecked(c.Radius);
         if (Math.Abs(distToLine - r2) < Epsilon)
             return new List<Vector2d<T>> { new(T.CreateChecked(clX), T.CreateChecked(clY)) }; // kisses
 
@@ -631,7 +631,7 @@ public static class Geom2D
         if (c1.Pos == c2.Pos) return new List<Vector2d<T>>();
         double bx = Dx(c2.Pos) - Dx(c1.Pos), by = Dy(c2.Pos) - Dy(c1.Pos);
         var dist2 = bx * bx + by * by;
-        double r1 = Convert.ToDouble(c1.Radius), r2 = Convert.ToDouble(c2.Radius);
+        double r1 = double.CreateChecked(c1.Radius), r2 = double.CreateChecked(c2.Radius);
         var radiusSum = r1 + r2;
         if (dist2 > radiusSum * radiusSum) return new List<Vector2d<T>>();
         if (Contains(c1, c2) || Contains(c2, c1)) return new List<Vector2d<T>>();
@@ -880,7 +880,7 @@ public static class Geom2D
     /// <seealso cref="EnvelopeC{T}(Circle{T})"/>
     public static Rect<T> EnvelopeR<T>(Circle<T> c) where T : struct, INumber<T>, IEquatable<T>, IComparable<T>
     {
-        var r = Convert.ToDouble(c.Radius);
+        var r = double.CreateChecked(c.Radius);
         return new Rect<T>(new Vector2d<T>(T.CreateChecked(Dx(c.Pos) - r), T.CreateChecked(Dy(c.Pos) - r)),
             new Vector2d<T>(T.CreateChecked(r * 2), T.CreateChecked(r * 2)));
     }
@@ -972,7 +972,7 @@ public static class Geom2D
         double dirx = Dx(q.Direction), diry = Dy(q.Direction), ox = Dx(q.Origin), oy = Dy(q.Origin), cx = Dx(c.Pos), cy = Dy(c.Pos);
         var a = dirx * dirx + diry * diry;
         var b = 2.0 * ((ox * dirx + oy * diry) - (cx * dirx + cy * diry));
-        var rad = Convert.ToDouble(c.Radius);
+        var rad = double.CreateChecked(c.Radius);
         var cc = cx * cx + cy * cy + ox * ox + oy * oy - 2.0 * cx * ox - 2.0 * cy * oy - rad * rad;
         var d = b * b - 4.0 * a * cc;
         if (d < 0) return new List<Vector2d<T>>();
