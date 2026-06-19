@@ -145,7 +145,9 @@ public sealed class PerfMonitor
     /// <summary>A single method's running totals, updated under a lock so it is safe to record from multiple threads.</summary>
     private sealed class Accumulator
     {
-        private readonly object _lock = new();
+        // System.Threading.Lock (net9+) — the compiler lowers `lock` on it to Lock.EnterScope, which is
+        // cheaper than the Monitor-on-object pattern under contention. No Wait/Pulse here, so it fits.
+        private readonly System.Threading.Lock _lock = new();
         private long _count, _totalTicks, _minTicks = long.MaxValue, _maxTicks, _lastTicks;
 
         /// <summary>Adds one timing sample (clamped to be non-negative).</summary>
