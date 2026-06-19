@@ -23,6 +23,20 @@ public struct Vector3d : IEquatable<Vector3d>
     /// <summary>Homogeneous w component (defaults to 1).</summary>
     /// <value>The homogeneous w coordinate; ignored by equality.</value>
     public float W;
+    
+    public double this[int i]
+    {
+        get
+        {
+            return i switch
+            {
+                0 => X,
+                1 => Y,
+                2 => Z,
+                _ => throw new IndexOutOfRangeException()
+            };
+        }
+    }
 
     /// <summary>Constructs a vector from components; z defaults to 0 and w to 1.</summary>
     /// <param name="x">X component.</param>

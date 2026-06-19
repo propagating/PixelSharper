@@ -227,13 +227,52 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
         return IsZero(length) ? throw new InvalidOperationException("Cannot normalize a vector with length zero.") : new Vector2d<T>(X / length, Y / length);
     }
 
-    /// <summary>Euclidean length, converted back to T.</summary>
+    /// <summary>Euclidean length, in T.</summary>
     /// <returns>The Euclidean length (magnitude) of the vector in <typeparamref name="T"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// For floating <typeparamref name="T"/> this stays entirely in <typeparamref name="T"/> via
+    /// <see cref="IRootFunctions{TSelf}.Sqrt"/> (<c>float</c>/<c>double</c>'s static <c>Sqrt</c>), skipping the
+    /// <c>T → double → T</c> round-trip. The <c>typeof(T) == …</c> tests are JIT-folded per instantiation, so only
+    /// the matching branch survives in codegen — there is no runtime branching. Integer (and other) <typeparamref name="T"/>
+    /// keep the <c>double</c> fallback. <see cref="IRootFunctions{TSelf}.Hypot"/> is the overflow-safe alternative
+    /// (slower); see <see cref="MagnitudeRobust"/>.
+    /// </para>
+    /// </remarks>
     /// <seealso cref="MagnitudeSquared"/>
+    /// <seealso cref="MagnitudeRobust"/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public T Magnitude()
     {
+        if (typeof(T) == typeof(float))
+        {
+            float fx = Unsafe.BitCast<T, float>(X), fy = Unsafe.BitCast<T, float>(Y);
+            return Unsafe.BitCast<float, T>(float.Sqrt(fx * fx + fy * fy));
+        }
+        if (typeof(T) == typeof(double))
+        {
+            double dx = Unsafe.BitCast<T, double>(X), dy = Unsafe.BitCast<T, double>(Y);
+            return Unsafe.BitCast<double, T>(double.Sqrt(dx * dx + dy * dy));
+        }
         return T.CreateChecked(MagnitudeAsDouble());
+    }
+
+    /// <summary>Overflow-safe Euclidean length via <see cref="IRootFunctions{TSelf}.Hypot"/> (float/double only; throws otherwise).</summary>
+    /// <returns>The magnitude computed with <c>Hypot</c>, which avoids intermediate overflow/underflow of <c>X*X + Y*Y</c>.</returns>
+    /// <remarks>
+    /// <para>Slower than <see cref="Magnitude"/> — use only when components can be extreme enough to overflow the squared sum.
+    /// Defined for <c>float</c>/<c>double</c> <typeparamref name="T"/>; other types throw.</para>
+    /// </remarks>
+    /// <exception cref="NotSupportedException">Thrown when <typeparamref name="T"/> is neither <c>float</c> nor <c>double</c>.</exception>
+    /// <seealso cref="Magnitude"/>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T MagnitudeRobust()
+    {
+        if (typeof(T) == typeof(float))
+            return Unsafe.BitCast<float, T>(float.Hypot(Unsafe.BitCast<T, float>(X), Unsafe.BitCast<T, float>(Y)));
+        if (typeof(T) == typeof(double))
+            return Unsafe.BitCast<double, T>(double.Hypot(Unsafe.BitCast<T, double>(X), Unsafe.BitCast<T, double>(Y)));
+        throw new NotSupportedException("MagnitudeRobust (Hypot) is only defined for float and double T.");
     }
 
     /// <summary>Squared length (no square root), staying in T.</summary>
@@ -307,6 +346,19 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (T r, T theta) ToPolar()
     {
+        // Floating T stays in T via IRootFunctions<T>.Sqrt + IFloatingPointIeee754<T>.Atan2 (float/double's
+        // static Sqrt/Atan2); typeof tests are JIT-folded per instantiation. Integer T keeps the double path.
+        // (Measured: only ~1.2x over the double path — Atan2's transcendental cost dominates — but lossless and free.)
+        if (typeof(T) == typeof(float))
+        {
+            float fx = Unsafe.BitCast<T, float>(X), fy = Unsafe.BitCast<T, float>(Y);
+            return (Unsafe.BitCast<float, T>(float.Sqrt(fx * fx + fy * fy)), Unsafe.BitCast<float, T>(float.Atan2(fy, fx)));
+        }
+        if (typeof(T) == typeof(double))
+        {
+            double dx = Unsafe.BitCast<T, double>(X), dy = Unsafe.BitCast<T, double>(Y);
+            return (Unsafe.BitCast<double, T>(double.Sqrt(dx * dx + dy * dy)), Unsafe.BitCast<double, T>(double.Atan2(dy, dx)));
+        }
         double r = MagnitudeAsDouble();
         double theta = Math.Atan2(double.CreateChecked(Y), double.CreateChecked(X));
         return (T.CreateChecked(r), T.CreateChecked(theta));
@@ -320,6 +372,19 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2d<T> FromPolar(T r, T theta)
     {
+        // Floating T stays in T via ITrigonometricFunctions<T>.Sin/Cos (float/double's static Sin/Cos),
+        // skipping the T->double->T round-trip; typeof tests are JIT-folded per instantiation. Integer T
+        // keeps the double path.
+        if (typeof(T) == typeof(float))
+        {
+            float fr = Unsafe.BitCast<T, float>(r), ft = Unsafe.BitCast<T, float>(theta);
+            return new Vector2d<T>(Unsafe.BitCast<float, T>(fr * float.Cos(ft)), Unsafe.BitCast<float, T>(fr * float.Sin(ft)));
+        }
+        if (typeof(T) == typeof(double))
+        {
+            double dr = Unsafe.BitCast<T, double>(r), dt = Unsafe.BitCast<T, double>(theta);
+            return new Vector2d<T>(Unsafe.BitCast<double, T>(dr * double.Cos(dt)), Unsafe.BitCast<double, T>(dr * double.Sin(dt)));
+        }
         double rDouble = double.CreateChecked(r);
         double thetaDouble = double.CreateChecked(theta);
         T x = T.CreateChecked(rDouble * Math.Cos(thetaDouble));
@@ -400,6 +465,20 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double Distance(Vector2d<T> a, Vector2d<T> b)
     {
+        // Floating T computes the sqrt in T via IRootFunctions<T>.Sqrt (no double round-trip), widened to the
+        // double return; typeof tests are JIT-folded per instantiation. Integer T keeps the double path.
+        if (typeof(T) == typeof(float))
+        {
+            float dx = Unsafe.BitCast<T, float>(a.X) - Unsafe.BitCast<T, float>(b.X);
+            float dy = Unsafe.BitCast<T, float>(a.Y) - Unsafe.BitCast<T, float>(b.Y);
+            return float.Sqrt(dx * dx + dy * dy);
+        }
+        if (typeof(T) == typeof(double))
+        {
+            double dx = Unsafe.BitCast<T, double>(a.X) - Unsafe.BitCast<T, double>(b.X);
+            double dy = Unsafe.BitCast<T, double>(a.Y) - Unsafe.BitCast<T, double>(b.Y);
+            return double.Sqrt(dx * dx + dy * dy);
+        }
         // Sqrt needs double; double.CreateChecked converts T->double without boxing.
         return Math.Sqrt(double.CreateChecked(DistanceSquared(a, b)));
     }

@@ -1,6 +1,7 @@
 namespace PixelSharper.Core.Types;
 
-/// <summary>2D affine transform as a 3x3 float matrix (olc mat3_generic{float}), point*matrix convention; a reference type so each operator returns a fresh instance and transform chains never alias storage.</summary>
+/// <summary>2D affine transform as a 3x3 float matrix (olc mat3_generic{float}), point*matrix convention;
+/// a reference type so each operator returns a fresh instance and transform chains never alias storage.</summary>
 public class Matrix2D
 {
     /// <summary>Row-major 9-element backing store for the 3x3 matrix.</summary>

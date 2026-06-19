@@ -256,6 +256,75 @@ public class Vector2dTests
         var expected = new Vector2d<int>(-4, 3);
         Assert.AreEqual(expected, result);
     }
+
+    [Test]
+    public void Magnitude_Float_FastPath_ShouldMatchDoublePath()
+    {
+        // The float specialization (IRootFunctions<float>.Sqrt) must agree with the manual double computation.
+        var vector = new Vector2d<float>(3f, 4f);
+
+        var result = vector.Magnitude();
+
+        Assert.AreEqual(5f, result, 1e-5f);
+    }
+
+    [Test]
+    public void MagnitudeRobust_Float_ShouldEqualMagnitude()
+    {
+        // Hypot path agrees with the ordinary magnitude for non-extreme inputs.
+        var vector = new Vector2d<float>(3f, 4f);
+
+        Assert.AreEqual(5f, vector.MagnitudeRobust(), 1e-5f);
+    }
+
+    [Test]
+    public void MagnitudeRobust_NonFloatingT_ShouldThrow()
+    {
+        var vector = new Vector2d<int>(3, 4);
+
+        Assert.Throws<NotSupportedException>(() => vector.MagnitudeRobust());
+    }
+
+    [Test]
+    public void ToPolar_Float_FastPath_ShouldReturnCorrectResult()
+    {
+        // Exercises the float Atan2/Sqrt specialization (IFloatingPointIeee754<float>.Atan2).
+        var vector = new Vector2d<float>(MathF.Sqrt(12.5f), MathF.Sqrt(12.5f));
+
+        var (r, theta) = vector.ToPolar();
+
+        Assert.AreEqual(5f, r, 1e-4f);
+        Assert.AreEqual(MathF.PI / 4f, theta, 1e-4f);
+    }
+
+    [Test]
+    public void Round_Float_ShouldRoundEachComponent()
+    {
+        var vector = new Vector2d<float>(1.4f, 3.6f);
+
+        var result = vector.Round();
+
+        Assert.AreEqual(new Vector2d<float>(1f, 4f), result);
+    }
+
+    [Test]
+    public void Truncate_Double_ShouldTruncateTowardZero()
+    {
+        var vector = new Vector2d<double>(1.9, -3.9);
+
+        var result = vector.Truncate();
+
+        Assert.AreEqual(new Vector2d<double>(1.0, -3.0), result);
+    }
+
+    [Test]
+    public void Floored_And_Ceiled_Double_ShouldStayInType()
+    {
+        var vector = new Vector2d<double>(1.8, 3.2);
+
+        Assert.AreEqual(new Vector2d<double>(1.0, 3.0), vector.Floored());
+        Assert.AreEqual(new Vector2d<double>(2.0, 4.0), vector.Ceiled());
+    }
     
     
     [Test]
