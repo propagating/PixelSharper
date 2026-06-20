@@ -1,4 +1,3 @@
-using System;
 using PixelSharper.Core.Types;
 
 namespace PixelSharper.Core.Utilities;

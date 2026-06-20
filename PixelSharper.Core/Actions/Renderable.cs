@@ -21,7 +21,7 @@ public class Renderable
     public Renderable()
     {
         Sprite = new Sprite();
-        Decal = new Decal();;
+        Decal = new Decal();
     }
 
 
@@ -41,19 +41,19 @@ public class Renderable
     /// <param name="pack">Optional resource pack to read from, or null to read from disk.</param>
     /// <param name="filter">When true, the decal samples with linear filtering rather than nearest.</param>
     /// <param name="clamp">When true, the decal clamps texture coordinates to its edges rather than wrapping.</param>
-    /// <returns><see cref="FileReadCode.OK"/> when the sprite loaded and its decal was built; otherwise <see cref="FileReadCode.NO_FILE"/> (the sprite is cleared).</returns>
+    /// <returns><see cref="FileReadCode.Ok"/> when the sprite loaded and its decal was built; otherwise <see cref="FileReadCode.NoFile"/> (the sprite is cleared).</returns>
     public FileReadCode Load(string file, ResourcePack pack, bool filter, bool clamp)
     {
         Sprite = new Sprite();
-        if (Sprite.LoadFromFile(file, pack) == FileReadCode.OK)
+        if (Sprite.LoadFromFile(file, pack) == FileReadCode.Ok)
         {
             Decal = new Decal(Sprite, filter, clamp);
-            return FileReadCode.OK;
+            return FileReadCode.Ok;
         }
         else
         {
             Sprite = null!;
-            return FileReadCode.NO_FILE;
+            return FileReadCode.NoFile;
         }
     }
 }

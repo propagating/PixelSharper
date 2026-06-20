@@ -77,12 +77,12 @@ public class BlendBenchmarks
         {
             var cv = Vector128.Create(c);
             var kv = Vector128.Create(kr, kg, kb, 0f);
-            var alpha = Vector128.Create((byte)0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
+            var alpha = Vector128.Create(0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
             var bytes = MemoryMarshal.AsBytes(row);
             int i = 0, limit = bytes.Length - (bytes.Length & 15);
             for (; i < limit; i += 16)
             {
-                var b = Vector128.Create<byte>(bytes.Slice(i, 16));
+                var b = Vector128.Create(bytes.Slice(i, 16));
                 var lo = Vector128.WidenLower(b);   // ushort x8 (px0,px1)
                 var hi = Vector128.WidenUpper(b);   // ushort x8 (px2,px3)
                 var f0 = Vector128.ConvertToSingle(Vector128.WidenLower(lo).AsInt32());
@@ -117,13 +117,13 @@ public class BlendBenchmarks
             var cv = Vector256.Create(c);
             var kv128 = Vector128.Create(kr, kg, kb, 0f);
             var kv = Vector256.Create(kv128, kv128);
-            var alpha128 = Vector128.Create((byte)0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
+            var alpha128 = Vector128.Create(0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
             var alpha = Vector256.Create(alpha128, alpha128);
             var bytes = MemoryMarshal.AsBytes(row);
             int i = 0, limit = bytes.Length - (bytes.Length & 31);
             for (; i < limit; i += 32)
             {
-                var b = Vector256.Create<byte>(bytes.Slice(i, 32));
+                var b = Vector256.Create(bytes.Slice(i, 32));
                 var lo = Vector256.WidenLower(b);   // ushort x16
                 var hi = Vector256.WidenUpper(b);
                 var f0 = Vector256.ConvertToSingle(Vector256.WidenLower(lo).AsInt32());

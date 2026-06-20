@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using PixelSharper.Core.Components;
-using PixelSharper.Core.Extensions;
 using PixelSharper.Core.Types;
 
 namespace PixelSharper.Core.Extensions.Wire;

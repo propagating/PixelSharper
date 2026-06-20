@@ -89,20 +89,20 @@ public class Decal
     }
 
     /// <summary>Builds a patch from four explicit corner UVs (bottom-left, top-left, top-right, bottom-right).</summary>
-    /// <param name="pBL">Bottom-left corner UV.</param>
-    /// <param name="pTL">Top-left corner UV.</param>
-    /// <param name="pTR">Top-right corner UV.</param>
-    /// <param name="pBR">Bottom-right corner UV.</param>
+    /// <param name="bottomLeft">Bottom-left corner UV.</param>
+    /// <param name="topLeft">Top-left corner UV.</param>
+    /// <param name="topRight">Top-right corner UV.</param>
+    /// <param name="bottomRight">Bottom-right corner UV.</param>
     /// <returns>A <see cref="DecalPatch"/> with the four explicit corner UVs.</returns>
     /// <seealso cref="Patch(Vector2d{int}, Vector2d{int})"/>
-    public DecalPatch Patch(Vector2d<float> pBL, Vector2d<float> pTL, Vector2d<float> pTR, Vector2d<float> pBR)
+    public DecalPatch Patch(Vector2d<float> bottomLeft, Vector2d<float> topLeft, Vector2d<float> topRight, Vector2d<float> bottomRight)
     {
         var patch = new DecalPatch();
         patch.Decal = this;
-        patch.Coordinates[0] = pBL;
-        patch.Coordinates[1] = pTL;
-        patch.Coordinates[2] = pTR;
-        patch.Coordinates[3] = pBR;
+        patch.Coordinates[0] = bottomLeft;
+        patch.Coordinates[1] = topLeft;
+        patch.Coordinates[2] = topRight;
+        patch.Coordinates[3] = bottomRight;
         return patch;
     }
 

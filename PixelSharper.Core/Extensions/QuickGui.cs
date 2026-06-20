@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using PixelSharper.Core.Actions;
 using PixelSharper.Core.Components;
 using PixelSharper.Core.Enums;
@@ -870,7 +867,7 @@ public class ModalDialog : PGEX
 
         _fileSelect.Update(Pge);
 
-        if (Pge.GetKey(KeyPress.BACK).Pressed)
+        if (Pge.GetKey(KeyPress.Back).Pressed)
         {
             var parent = Directory.GetParent(_path.TrimEnd(Path.DirectorySeparatorChar));
             if (parent != null) { _path = parent.FullName; Populate(); }
@@ -885,7 +882,7 @@ public class ModalDialog : PGEX
         Pge.DrawStringDecal(new Vector2d<float>(0, 0), _path);
         _fileSelect.DrawDecal(Pge);
 
-        if (Pge.GetKey(KeyPress.ESCAPE).Pressed)
+        if (Pge.GetKey(KeyPress.Escape).Pressed)
         {
             _showDialog = false;
             return false;

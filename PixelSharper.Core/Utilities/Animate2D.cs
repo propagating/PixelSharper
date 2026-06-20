@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using PixelSharper.Core.Actions;
 using PixelSharper.Core.Utilities.Geometry;
 

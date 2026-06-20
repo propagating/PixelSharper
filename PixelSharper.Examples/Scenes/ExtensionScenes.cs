@@ -167,7 +167,7 @@ public class Hw3dScene : IExampleScene
         e.DrawString(4, e.CanvasTop + 2, "Upload a mesh + camera matrices; the GPU rasterises it.", Pixel.WHITE);
 
         e.HW3D_EnableDepthTest();
-        e.HW3D_SetCullMode(CullMode.NONE);
+        e.HW3D_SetCullMode(CullMode.None);
         e.HW3D_Projection(_cam.GetProjectionMatrix().ToArray());
 
         var model = Matrix4x4.RotateY(_t) * Matrix4x4.RotateX(_t * 0.6f);

@@ -74,7 +74,7 @@ public class BlitBenchmarks
             var vBlend = Vector128.Create(blend);
             var v1 = Vector128.Create(1f);
             var shuf = Vector128.Create(3, 3, 3, 3); // broadcast lane 3 (alpha) of each 1-pixel float vector
-            var alphaMask = Vector128.Create((byte)0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
+            var alphaMask = Vector128.Create(0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
             var db = MemoryMarshal.AsBytes(dst);
             var sb = MemoryMarshal.AsBytes(src);
             int i = 0, limit = db.Length - (db.Length & 15);
@@ -87,10 +87,10 @@ public class BlitBenchmarks
 
             for (; i < limit; i += 16)
             {
-                var dlo = Vector128.WidenLower(Vector128.Create<byte>(db.Slice(i, 16)));
-                var dhi = Vector128.WidenUpper(Vector128.Create<byte>(db.Slice(i, 16)));
-                var slo = Vector128.WidenLower(Vector128.Create<byte>(sb.Slice(i, 16)));
-                var shi = Vector128.WidenUpper(Vector128.Create<byte>(sb.Slice(i, 16)));
+                var dlo = Vector128.WidenLower(Vector128.Create(db.Slice(i, 16)));
+                var dhi = Vector128.WidenUpper(Vector128.Create(db.Slice(i, 16)));
+                var slo = Vector128.WidenLower(Vector128.Create(sb.Slice(i, 16)));
+                var shi = Vector128.WidenUpper(Vector128.Create(sb.Slice(i, 16)));
                 var o0 = Over(Vector128.ConvertToSingle(Vector128.WidenLower(slo).AsInt32()), Vector128.ConvertToSingle(Vector128.WidenLower(dlo).AsInt32()));
                 var o1 = Over(Vector128.ConvertToSingle(Vector128.WidenUpper(slo).AsInt32()), Vector128.ConvertToSingle(Vector128.WidenUpper(dlo).AsInt32()));
                 var o2 = Over(Vector128.ConvertToSingle(Vector128.WidenLower(shi).AsInt32()), Vector128.ConvertToSingle(Vector128.WidenLower(dhi).AsInt32()));
@@ -119,7 +119,7 @@ public class BlitBenchmarks
             var vBlend = Vector256.Create(blend);
             var v1 = Vector256.Create(1f);
             var shuf = Vector256.Create(3, 3, 3, 3, 7, 7, 7, 7); // alpha of pixel0 and pixel1 within each 8-lane vector
-            var alpha128 = Vector128.Create((byte)0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
+            var alpha128 = Vector128.Create(0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
             var alphaMask = Vector256.Create(alpha128, alpha128);
             var db = MemoryMarshal.AsBytes(dst);
             var sb = MemoryMarshal.AsBytes(src);
@@ -133,8 +133,8 @@ public class BlitBenchmarks
 
             for (; i < limit; i += 32)
             {
-                var dvec = Vector256.Create<byte>(db.Slice(i, 32));
-                var svec = Vector256.Create<byte>(sb.Slice(i, 32));
+                var dvec = Vector256.Create(db.Slice(i, 32));
+                var svec = Vector256.Create(sb.Slice(i, 32));
                 var dlo = Vector256.WidenLower(dvec); var dhi = Vector256.WidenUpper(dvec);
                 var slo = Vector256.WidenLower(svec); var shi = Vector256.WidenUpper(svec);
                 var o0 = Over(Vector256.ConvertToSingle(Vector256.WidenLower(slo).AsInt32()), Vector256.ConvertToSingle(Vector256.WidenLower(dlo).AsInt32()));

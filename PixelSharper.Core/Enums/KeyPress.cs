@@ -10,7 +10,7 @@ namespace PixelSharper.Core.Enums;
 public enum KeyPress
 {
     /// <summary>No key / unbound.</summary>
-    NONE,
+    None,
     /// <summary>The A key.</summary>
     A,
     /// <summary>The B key.</summary>
@@ -108,101 +108,101 @@ public enum KeyPress
     /// <summary>The F12 function key.</summary>
     F12,
     /// <summary>The Up arrow key.</summary>
-    UP,
+    Up,
     /// <summary>The Down arrow key.</summary>
-    DOWN,
+    Down,
     /// <summary>The Left arrow key.</summary>
-    LEFT,
+    Left,
     /// <summary>The Right arrow key.</summary>
-    RIGHT,
+    Right,
     /// <summary>The Space bar.</summary>
-    SPACE,
+    Space,
     /// <summary>The Tab key.</summary>
-    TAB,
+    Tab,
     /// <summary>The Shift key.</summary>
-    SHIFT,
+    Shift,
     /// <summary>The Control key.</summary>
-    CTRL,
+    Control,
     /// <summary>The Insert key.</summary>
-    INS,
+    Insert,
     /// <summary>The Delete key.</summary>
-    DEL,
+    Delete,
     /// <summary>The Home key.</summary>
-    HOME,
+    Home,
     /// <summary>The End key.</summary>
-    END,
+    End,
     /// <summary>The Page Up key.</summary>
-    PGUP,
+    PageUp,
     /// <summary>The Page Down key.</summary>
-    PGDN,
+    PageDown,
     /// <summary>The Backspace key.</summary>
-    BACK,
+    Back,
     /// <summary>The Escape key.</summary>
-    ESCAPE,
+    Escape,
     /// <summary>The Return key.</summary>
-    RETURN,
+    Return,
     /// <summary>The Enter key (numpad Enter).</summary>
-    ENTER,
+    Enter,
     /// <summary>The Pause key.</summary>
-    PAUSE,
+    Pause,
     /// <summary>The Scroll Lock key.</summary>
-    SCROLL,
+    Scroll,
     /// <summary>Numpad 0.</summary>
-    NP0,
+    Num0,
     /// <summary>Numpad 1.</summary>
-    NP1,
+    Num1,
     /// <summary>Numpad 2.</summary>
-    NP2,
+    Num2,
     /// <summary>Numpad 3.</summary>
-    NP3,
+    Num3,
     /// <summary>Numpad 4.</summary>
-    NP4,
+    Num4,
     /// <summary>Numpad 5.</summary>
-    NP5,
+    Num5,
     /// <summary>Numpad 6.</summary>
-    NP6,
+    Num6,
     /// <summary>Numpad 7.</summary>
-    NP7,
+    Num7,
     /// <summary>Numpad 8.</summary>
-    NP8,
+    Num8,
     /// <summary>Numpad 9.</summary>
-    NP9,
+    Num9,
     /// <summary>Numpad multiply key.</summary>
-    NP_MUL,
+    NumMul,
     /// <summary>Numpad divide key.</summary>
-    NP_DIV,
+    NumDiv,
     /// <summary>Numpad add key.</summary>
-    NP_ADD,
+    NumAdd,
     /// <summary>Numpad subtract key.</summary>
-    NP_SUB,
+    NumSub,
     /// <summary>Numpad decimal point key.</summary>
-    NP_DECIMAL,
+    NumDecimal,
     /// <summary>The period key.</summary>
-    PERIOD,
-    /// <summary>The equals key.</summary>
-    EQUALS,
+    Period,
+    /// <summary>The equal key.</summary>
+    EqualsKey,
     /// <summary>The comma key.</summary>
-    COMMA,
+    Comma,
     /// <summary>The minus key.</summary>
-    MINUS,
+    Minus,
     /// <summary>OEM key 1 (typically semicolon / colon).</summary>
-    OEM_1,
+    Oem1,
     /// <summary>OEM key 2 (typically forward slash / question mark).</summary>
-    OEM_2,
+    Oem2,
     /// <summary>OEM key 3 (typically backtick / tilde).</summary>
-    OEM_3,
+    Oem3,
     /// <summary>OEM key 4 (typically left bracket).</summary>
-    OEM_4,
+    Oem4,
     /// <summary>OEM key 5 (typically backslash / pipe).</summary>
-    OEM_5,
+    Oem5,
     /// <summary>OEM key 6 (typically right bracket).</summary>
-    OEM_6,
+    Oem6,
     /// <summary>OEM key 7 (typically apostrophe / quote).</summary>
-    OEM_7,
+    Oem7,
     /// <summary>OEM key 8 (no GLFW equivalent).</summary>
-    OEM_8,
+    Oem8,
     /// <summary>The Caps Lock key.</summary>
-    CAPS_LOCK,
+    CapsLock,
     /// <summary>Marks the end of the enumeration; equals the total key count.</summary>
-    ENUM_END
+    EnumEnd
 }

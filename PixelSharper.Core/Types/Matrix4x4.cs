@@ -1,4 +1,3 @@
-using System;
 using System.Runtime.CompilerServices;
 using SnMatrix = System.Numerics.Matrix4x4;
 using SnVector4 = System.Numerics.Vector4;

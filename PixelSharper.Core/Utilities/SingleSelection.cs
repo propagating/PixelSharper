@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace PixelSharper.Core.Utilities;
 
 /// <summary>Port of olcUTIL_Container::SingleSelection — a List{T} that also tracks a single "selected" item and supports reordering it (think image layers in an editor). Operates on indices, not iterators.</summary>

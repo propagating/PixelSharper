@@ -97,7 +97,7 @@ namespace PixelSharperTests
         public void Wrap_RequiresInterface()
         {
             var pm = new PerfMonitor();
-            Assert.Throws<ArgumentException>(() => PerfMonitor.Wrap<Calc>(new Calc(), pm));
+            Assert.Throws<ArgumentException>(() => PerfMonitor.Wrap(new Calc(), pm));
         }
 
         [Test]

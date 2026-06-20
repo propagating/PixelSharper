@@ -1,8 +1,6 @@
 // File: PixelSharper.Core/Types/LayerDesc.cs
-using System;
-using System.Collections.Generic;
+
 using PixelSharper.Core.Actions;
-using PixelSharper.Core.Types;
 using PixelSharper.Core.Components;
 
 namespace PixelSharper.Core.Types

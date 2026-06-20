@@ -26,21 +26,21 @@ namespace PixelSharperTests
             Assert.AreEqual("z", e.GetKeySymbol(KeyPress.Z));
             Assert.AreEqual("1", e.GetKeySymbol(KeyPress.K1));
             Assert.AreEqual("!", e.GetKeySymbol(KeyPress.K1, shift: true));
-            Assert.AreEqual(" ", e.GetKeySymbol(KeyPress.SPACE));
-            Assert.AreEqual("", e.GetKeySymbol(KeyPress.SHIFT)); // modifier produces no character
+            Assert.AreEqual(" ", e.GetKeySymbol(KeyPress.Space));
+            Assert.AreEqual("", e.GetKeySymbol(KeyPress.Shift)); // modifier produces no character
         }
 
         [Test]
         public void KeySymbol_NavigationCommandCodes()
         {
             var e = Engine();
-            Assert.AreEqual("\b", e.GetKeySymbol(KeyPress.BACK));
-            Assert.AreEqual("\n", e.GetKeySymbol(KeyPress.ENTER));
-            Assert.AreEqual("_X", e.GetKeySymbol(KeyPress.DEL));
-            Assert.AreEqual("_L", e.GetKeySymbol(KeyPress.LEFT));
-            Assert.AreEqual("_R", e.GetKeySymbol(KeyPress.RIGHT));
-            Assert.AreEqual("_U", e.GetKeySymbol(KeyPress.UP));
-            Assert.AreEqual("_D", e.GetKeySymbol(KeyPress.DOWN));
+            Assert.AreEqual("\b", e.GetKeySymbol(KeyPress.Back));
+            Assert.AreEqual("\n", e.GetKeySymbol(KeyPress.Enter));
+            Assert.AreEqual("_X", e.GetKeySymbol(KeyPress.Delete));
+            Assert.AreEqual("_L", e.GetKeySymbol(KeyPress.Left));
+            Assert.AreEqual("_R", e.GetKeySymbol(KeyPress.Right));
+            Assert.AreEqual("_U", e.GetKeySymbol(KeyPress.Up));
+            Assert.AreEqual("_D", e.GetKeySymbol(KeyPress.Down));
         }
 
         [Test]
@@ -64,7 +64,7 @@ namespace PixelSharperTests
             var e = Engine();
             Assert.IsFalse(e.IsConsoleShowing());
             Assert.AreEqual(0u, e.GetFPS()); // no frames run yet
-            Assert.AreEqual(KeyPress.NONE, e.ConvertKeycode(0));
+            Assert.AreEqual(KeyPress.None, e.ConvertKeycode(0));
             Assert.AreEqual(KeyPress.A, e.ConvertKeycode((int)KeyPress.A));
             Assert.IsNotNull(e.ConsoleOut()); // a writable output sink exists
         }

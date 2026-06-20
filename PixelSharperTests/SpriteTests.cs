@@ -126,7 +126,7 @@ namespace PixelSharperTests
             var result = sprite.LoadFromFile(filePath, resourcePack);
 
             // Assert
-            Assert.AreEqual(FileReadCode.OK, result);
+            Assert.AreEqual(FileReadCode.Ok, result);
             Assert.IsNotEmpty(sprite.PixelData);
         }
 
@@ -164,7 +164,7 @@ namespace PixelSharperTests
                         Blue = (byte)((i + 200) % 255),
                         Alpha = (byte)((i + 50) % 255) };
                 }
-                return FileReadCode.OK;
+                return FileReadCode.Ok;
             }
         }
     }

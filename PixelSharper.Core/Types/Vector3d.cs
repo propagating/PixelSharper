@@ -1,5 +1,3 @@
-using System;
-
 namespace PixelSharper.Core.Types;
 
 /// <summary>Port of olc::v_3d (float, olc's vf3d): a 3D vector with an optional homogeneous w component; concrete float type so the full scalar operator set is unambiguous.</summary>

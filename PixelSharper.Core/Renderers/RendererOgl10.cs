@@ -53,12 +53,12 @@ public class RendererOgl10 : Renderer
     /// <param name="parameters">Platform-supplied arguments; <c>parameters[0]</c> must be the OpenTK <c>IGraphicsContext</c>.</param>
     /// <param name="fullScreen">Whether the device is created for a full-screen window (unused in this OGL10 port).</param>
     /// <param name="vsync">When <c>true</c> the swap interval is set to 1 (vsync on); otherwise 0.</param>
-    /// <returns><see cref="FileReadCode.OK"/> on success, or <see cref="FileReadCode.FAIL"/> if no valid context was supplied.</returns>
+    /// <returns><see cref="FileReadCode.Ok"/> on success, or <see cref="FileReadCode.Fail"/> if no valid context was supplied.</returns>
     public override FileReadCode CreateDevice(List<object> parameters, bool fullScreen, bool vsync)
     {
         // The platform hands us its OpenTK graphics context as parameters[0].
         if (parameters == null || parameters.Count == 0 || parameters[0] is not IGraphicsContext context)
-            return FileReadCode.FAIL;
+            return FileReadCode.Fail;
 
         _context = context;
         _context.MakeCurrent();
@@ -66,16 +66,16 @@ public class RendererOgl10 : Renderer
 
         GL.Enable(EnableCap.Texture2D);
         GL.Hint(HintTarget.PerspectiveCorrectionHint, HintMode.Nicest);
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Drops the context reference; its lifetime is owned by the platform window.</summary>
-    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
+    /// <returns>Always <see cref="FileReadCode.Ok"/>.</returns>
     public override FileReadCode DestroyDevice()
     {
         // The context's lifetime is owned by the platform window, not the renderer.
         _context = null;
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Presents the rendered frame by swapping the back buffer.</summary>
@@ -219,15 +219,15 @@ public class RendererOgl10 : Renderer
 
         switch (task.Cull)
         {
-            case CullMode.NONE:
+            case CullMode.None:
                 GL.CullFace(TriangleFace.Front);
                 GL.Disable(EnableCap.CullFace);
                 break;
-            case CullMode.CW:
+            case CullMode.ClockWise:
                 GL.CullFace(TriangleFace.Front);
                 GL.Enable(EnableCap.CullFace);
                 break;
-            case CullMode.CCW:
+            case CullMode.CounterClockWise:
                 GL.CullFace(TriangleFace.Back);
                 GL.Enable(EnableCap.CullFace);
                 break;

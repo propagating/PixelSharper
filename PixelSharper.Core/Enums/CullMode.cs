@@ -7,11 +7,11 @@ namespace PixelSharper.Core.Enums;
 public enum CullMode : byte
 {
     /// <summary>No culling; render both front and back faces.</summary>
-    NONE = 0,
+    None = 0,
 
     /// <summary>Cull triangles wound clockwise.</summary>
-    CW = 1,
+    ClockWise = 1,
 
     /// <summary>Cull triangles wound counter-clockwise.</summary>
-    CCW = 2
+    CounterClockWise = 2
 }

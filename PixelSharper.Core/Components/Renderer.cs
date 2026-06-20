@@ -1,11 +1,9 @@
 // File: PixelSharper.Core/Components/Renderer.cs
-using System;
+
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using PixelSharper.Core.Actions;
 using PixelSharper.Core.Enums;
 using PixelSharper.Core.Types;
-using PixelSharper.Core.Resources;
 
 namespace PixelSharper.Core.Components
 {

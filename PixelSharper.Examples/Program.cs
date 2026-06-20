@@ -32,7 +32,7 @@ var scenes = new IExampleScene[]
 var autotest = args.Length > 0 && args[0] == "--autotest";
 
 var showcase = new Showcase(scenes, autotest);
-if (showcase.Construct(640, 480, 1, 1, vsync: true) == FileReadCode.OK)
+if (showcase.Construct(640, 480, 1, 1, vsync: true) == FileReadCode.Ok)
 {
     if (!autotest) _ = new SplashScreen(); // auto-hooks: plays the OLC splash before the showcase
     showcase.Start();

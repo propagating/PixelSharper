@@ -76,10 +76,10 @@ public class Showcase : PixelGameEngine
     /// <returns><c>false</c> when ESC is pressed or auto-test has visited every scene (requesting shutdown); otherwise <c>true</c>.</returns>
     public override bool OnUpdate(float elapsedTime)
     {
-        if (GetKey(KeyPress.ESCAPE).Pressed) return false;
+        if (GetKey(KeyPress.Escape).Pressed) return false;
 
-        if (GetKey(KeyPress.RIGHT).Pressed || GetKey(KeyPress.SPACE).Pressed) Switch(+1);
-        if (GetKey(KeyPress.LEFT).Pressed) Switch(-1);
+        if (GetKey(KeyPress.Right).Pressed || GetKey(KeyPress.Space).Pressed) Switch(+1);
+        if (GetKey(KeyPress.Left).Pressed) Switch(-1);
 
         if (_autoAdvance)
         {

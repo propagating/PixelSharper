@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using PixelSharper.Core.Components;
 
 namespace PixelSharper.Core.Utilities;

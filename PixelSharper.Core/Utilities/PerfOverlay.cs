@@ -1,4 +1,3 @@
-using System;
 using PixelSharper.Core.Components;
 using PixelSharper.Core.Types;
 

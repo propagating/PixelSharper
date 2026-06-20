@@ -1,5 +1,5 @@
 // File: PixelSharper.Core/Types/GPUTask.cs
-using System.Collections.Generic;
+
 using PixelSharper.Core.Components;
 using PixelSharper.Core.Enums;
 
@@ -35,8 +35,8 @@ namespace PixelSharper.Core.Types
         /// </remarks>
         public float[] Mvp { get; set; } = Identity();
         /// <summary>Back-face cull mode.</summary>
-        /// <value>The face-culling mode; defaults to <see cref="CullMode.NONE"/>.</value>
-        public CullMode Cull { get; set; } = CullMode.NONE;
+        /// <value>The face-culling mode; defaults to <see cref="CullMode.None"/>.</value>
+        public CullMode Cull { get; set; } = CullMode.None;
         /// <summary>Tint colour applied to the geometry.</summary>
         /// <value>The tint colour; defaults to <see cref="Pixel.WHITE"/>.</value>
         public Pixel Tint { get; set; } = Pixel.WHITE;
@@ -52,7 +52,7 @@ namespace PixelSharper.Core.Types
             Structure = DecalStructure.Fan;
             Mode = DecalMode.Normal;
             Depth = false;
-            Cull = CullMode.NONE;
+            Cull = CullMode.None;
             Tint = Pixel.WHITE;
             var m = Mvp;
             System.Array.Clear(m, 0, 16);

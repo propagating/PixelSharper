@@ -47,7 +47,7 @@ namespace PixelSharperTests
             protected override void OnMessage(Connection<MsgId> client, Message<MsgId> msg)
             {
                 LastPayload = msg.Pop<int>();
-                Received++;
+                Interlocked.Increment(ref Received);
             }
         }
 

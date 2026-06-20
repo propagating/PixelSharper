@@ -21,8 +21,8 @@ namespace PixelSharperTests
 
             // Unused stubs for this fixture.
             public override void PrepareDevice() { }
-            public override FileReadCode CreateDevice(List<object> p, bool fs, bool vs) => FileReadCode.OK;
-            public override FileReadCode DestroyDevice() => FileReadCode.OK;
+            public override FileReadCode CreateDevice(List<object> p, bool fs, bool vs) => FileReadCode.Ok;
+            public override FileReadCode DestroyDevice() => FileReadCode.Ok;
             public override void DisplayFrame() { }
             public override void PrepareDrawing() { }
             public override void SetDecalMode(DecalMode mode) { }

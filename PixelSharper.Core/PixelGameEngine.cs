@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Text;
@@ -119,7 +118,7 @@ public abstract class PixelGameEngine
     /// <summary>Whether HW3D draws are depth-tested.</summary>
     private bool _hw3dDepthTest = true;
     /// <summary>Current HW3D face-culling mode.</summary>
-    private CullMode _hw3dCullMode = CullMode.NONE;
+    private CullMode _hw3dCullMode = CullMode.None;
     /// <summary>Reusable 4-point scratch for the colour-quad/line decal helpers (filled and consumed synchronously, so sharing is safe).</summary>
     private readonly Vector2d<float>[] _scratchPts4 = new Vector2d<float>[4];
     /// <summary>Reusable 4-colour scratch for the colour-quad decal helpers.</summary>
@@ -190,11 +189,11 @@ public abstract class PixelGameEngine
     private const int MouseButtonCount = 5; // olc's nMouseButtons
     /// <summary>Resolved pressed/released/held state per keyboard key.</summary>
     /// <remarks>Indexed by <c>(int)</c><see cref="KeyPress"/>; the edge state derived each frame from the raw old/new arrays.</remarks>
-    private readonly HardwareButton[] _keyboardState = new HardwareButton[(int)KeyPress.ENUM_END];
+    private readonly HardwareButton[] _keyboardState = new HardwareButton[(int)KeyPress.EnumEnd];
     /// <summary>Previous-frame raw down state per keyboard key.</summary>
-    private readonly bool[] _keyOldState = new bool[(int)KeyPress.ENUM_END];
+    private readonly bool[] _keyOldState = new bool[(int)KeyPress.EnumEnd];
     /// <summary>Current-frame raw down state per keyboard key.</summary>
-    private readonly bool[] _keyNewState = new bool[(int)KeyPress.ENUM_END];
+    private readonly bool[] _keyNewState = new bool[(int)KeyPress.EnumEnd];
     /// <summary>Resolved pressed/released/held state per mouse button.</summary>
     /// <remarks>Indexed 0..<see cref="MouseButtonCount"/>-1; the edge state derived each frame from the raw old/new arrays.</remarks>
     private readonly HardwareButton[] _mouseButtonState = new HardwareButton[MouseButtonCount];
@@ -222,7 +221,7 @@ public abstract class PixelGameEngine
     /// <summary>Pixel-space point at which files were dropped.</summary>
     private Vector2d<int> _droppedFilesPoint;
 
-    /// <summary>Configures screen/pixel/window sizing and flags (olc's Construct); returns FAIL on non-positive dimensions.</summary>
+    /// <summary>Configures screen/pixel/window sizing and flags (olc's Construct); returns Fail on non-positive dimensions.</summary>
     /// <param name="screenW">Drawable screen width in engine pixels; must be positive.</param>
     /// <param name="screenH">Drawable screen height in engine pixels; must be positive.</param>
     /// <param name="pixelW">Width in OS pixels of one engine pixel; must be positive.</param>
@@ -231,7 +230,7 @@ public abstract class PixelGameEngine
     /// <param name="vsync">When <c>true</c>, synchronise buffer swaps to the display refresh.</param>
     /// <param name="cohesion">When <c>true</c>, snap the on-screen pixel scale to whole-integer multiples (see <see cref="PixelCohesion"/>).</param>
     /// <param name="realWindow">When <c>true</c>, render 1:1 into a freely-resizable window with no letterbox (see <see cref="RealWindowMode"/>).</param>
-    /// <returns><c>FileReadCode.OK</c> if the configuration is valid; <c>FileReadCode.FAIL</c> if any pixel or screen dimension is not positive.</returns>
+    /// <returns><c>FileReadCode.Ok</c> if the configuration is valid; <c>FileReadCode.Fail</c> if any pixel or screen dimension is not positive.</returns>
     /// <remarks>Call before <see cref="Start"/>. Computes <see cref="WindowSize"/>, <see cref="InvScreenSize"/> and <see cref="VectorPixel"/> from the supplied dimensions.</remarks>
     /// <example>
     /// <code>
@@ -246,7 +245,7 @@ public abstract class PixelGameEngine
     /// }
     ///
     /// var app = new App();
-    /// if (app.Construct(256, 240, 4, 4) == FileReadCode.OK)
+    /// if (app.Construct(256, 240, 4, 4) == FileReadCode.Ok)
     ///     app.Start();
     /// </code>
     /// </example>
@@ -265,12 +264,12 @@ public abstract class PixelGameEngine
         VectorPixel = new Vector2d<float>(2.0f / screenW, 2.0f / screenH);
 
         if (PixelSize.X <= 0 || PixelSize.Y <= 0 || ScreenSize.X <= 0 || ScreenSize.Y <= 0)
-            return FileReadCode.FAIL;
-        return FileReadCode.OK;
+            return FileReadCode.Fail;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Wires the platform/renderer, creates the window + GL context, and runs the core loop until the window closes.</summary>
-    /// <returns><c>FileReadCode.OK</c> on a clean run and shutdown; <c>FileReadCode.FAIL</c> if platform startup, window/graphics creation, or cleanup fails.</returns>
+    /// <returns><c>FileReadCode.Ok</c> on a clean run and shutdown; <c>FileReadCode.Fail</c> if platform startup, window/graphics creation, or cleanup fails.</returns>
     /// <remarks>
     /// <para>Call after a successful <see cref="Construct(int, int, int, int, bool, bool, bool, bool)"/>. Unlike olc, which splits the OS event loop and GL context across two threads, this runs the whole lifecycle on the calling thread: create window, create graphics, then loop <c>CoreUpdate</c> until the window is closed.</para>
     /// <para>Extension <c>OnBeforeUserCreate</c>/<c>OnAfterUserCreate</c> bracket <see cref="OnCreate"/>; a close request is offered to <see cref="OnDestroy"/>, which may veto it.</para>
@@ -278,7 +277,7 @@ public abstract class PixelGameEngine
     /// <example>
     /// <code>
     /// var app = new App();
-    /// if (app.Construct(256, 240, 4, 4) == FileReadCode.OK)
+    /// if (app.Construct(256, 240, 4, 4) == FileReadCode.Ok)
     ///     app.Start(); // blocks until the window closes
     /// </code>
     /// </example>
@@ -292,14 +291,14 @@ public abstract class PixelGameEngine
         Renderer.PtrPGE = this;
         Platform.PtrPGE = this;
 
-        if (_platform.ApplicationStartUp() != FileReadCode.OK) return FileReadCode.FAIL;
+        if (_platform.ApplicationStartUp() != FileReadCode.Ok) return FileReadCode.Fail;
 
         // Construct the window
-        if (_platform.CreateWindowPane(new Vector2d<int>(30, 30), WindowSize, FullScreen) != FileReadCode.OK)
-            return FileReadCode.FAIL;
+        if (_platform.CreateWindowPane(new Vector2d<int>(30, 30), WindowSize, FullScreen) != FileReadCode.Ok)
+            return FileReadCode.Fail;
         UpdateWindowSize(WindowSize.X, WindowSize.Y);
 
-        if (_platform.ThreadStartUp() != FileReadCode.OK) return FileReadCode.FAIL;
+        if (_platform.ThreadStartUp() != FileReadCode.Ok) return FileReadCode.Fail;
         PrepareEngine();
 
         foreach (var ext in _extensions) ext.OnBeforeUserCreate();
@@ -315,8 +314,8 @@ public abstract class PixelGameEngine
         }
 
         _platform.ThreadCleanUp();
-        if (_platform.ApplicationCleanUp() != FileReadCode.OK) return FileReadCode.FAIL;
-        return FileReadCode.OK;
+        if (_platform.ApplicationCleanUp() != FileReadCode.Ok) return FileReadCode.Fail;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Creates the GL graphics device, builds the font sheet, and sets up layer 0 and the initial draw target.</summary>
@@ -329,7 +328,7 @@ public abstract class PixelGameEngine
     private void PrepareEngine()
     {
         // Start OpenGL; the context becomes current on this thread inside CreateGraphics.
-        if (_platform.CreateGraphics(FullScreen, EnableVSYNC, ViewPos, ViewSize) == FileReadCode.FAIL)
+        if (_platform.CreateGraphics(FullScreen, EnableVSYNC, ViewPos, ViewSize) == FileReadCode.Fail)
             return;
 
         ConstructFontSheet();
@@ -434,7 +433,7 @@ public abstract class PixelGameEngine
             // The console overlay draws (as decals) into layer 0, on top of the user's frame.
             if (_consoleShow)
             {
-                SetDrawTarget((byte)0);
+                SetDrawTarget(0);
                 UpdateConsole();
             }
 
@@ -762,10 +761,10 @@ public abstract class PixelGameEngine
 
     /// <summary>[ADVANCED] Range-checked cast of a raw keycode to a <see cref="KeyPress"/> (our keycodes are <see cref="KeyPress"/> values).</summary>
     /// <param name="keycode">The raw keycode (a <see cref="KeyPress"/> value as an int) to convert.</param>
-    /// <returns>The matching <see cref="KeyPress"/> when <paramref name="keycode"/> is in range; otherwise <c>KeyPress.NONE</c>.</returns>
+    /// <returns>The matching <see cref="KeyPress"/> when <paramref name="keycode"/> is in range; otherwise <c>KeyPress.None</c>.</returns>
     /// <remarks>[ADVANCED]</remarks>
     public KeyPress ConvertKeycode(int keycode)
-        => keycode > 0 && keycode < (int)KeyPress.ENUM_END ? (KeyPress)keycode : KeyPress.NONE;
+        => keycode > 0 && keycode < (int)KeyPress.EnumEnd ? (KeyPress)keycode : KeyPress.None;
 
     /// <summary>[ADVANCED] Character(s) a key yields under the given modifiers; navigation keys return command symbols.</summary>
     /// <param name="key">The key to look up in the keyboard symbol table.</param>
@@ -802,8 +801,8 @@ public abstract class PixelGameEngine
     /// </remarks>
     private void UpdateTextEntry()
     {
-        var shift = GetKey(KeyPress.SHIFT).Held;
-        var ctrl = GetKey(KeyPress.CTRL).Held;
+        var shift = GetKey(KeyPress.Shift).Held;
+        var ctrl = GetKey(KeyPress.Control).Held;
         foreach (var keycode in _keyPressCache)
         {
             var sym = GetKeySymbol(ConvertKeycode(keycode), shift, ctrl);
@@ -888,32 +887,32 @@ public abstract class PixelGameEngine
         for (var i = 0; i < 10; i++)
             m[KeyPress.K0 + i] = (i.ToString(), digitShift[i], i.ToString(), i.ToString());
         for (var i = 0; i < 10; i++)
-            m[KeyPress.NP0 + i] = (i.ToString(), i.ToString(), i.ToString(), i.ToString());
-        m[KeyPress.NP_MUL] = ("*", "*", "", "");
-        m[KeyPress.NP_DIV] = ("/", "/", "", "");
-        m[KeyPress.NP_ADD] = ("+", "+", "", "");
-        m[KeyPress.NP_SUB] = ("-", "-", "", "");
-        m[KeyPress.NP_DECIMAL] = (".", ".", "", "");
-        m[KeyPress.PERIOD] = (".", ">", "", "");
-        m[KeyPress.EQUALS] = ("=", "+", "", "");
-        m[KeyPress.COMMA] = (",", "<", "", "");
-        m[KeyPress.MINUS] = ("-", "_", "", "");
-        m[KeyPress.SPACE] = (" ", " ", "", "");
-        m[KeyPress.ENTER] = ("\n", "\n ", "\n", "\n");
-        m[KeyPress.OEM_1] = (";", ":", "", "");
-        m[KeyPress.OEM_2] = ("/", "?", "", "");
-        m[KeyPress.OEM_3] = ("'", "@", "", "");
-        m[KeyPress.OEM_4] = ("[", "{", "", "");
-        m[KeyPress.OEM_5] = ("\\", "|", "", "");
-        m[KeyPress.OEM_6] = ("]", "}", "", "");
-        m[KeyPress.OEM_7] = ("#", "~", "", "");
-        m[KeyPress.TAB] = ("\t", "\t", "\t", "\t");
-        m[KeyPress.BACK] = ("\b", "\b", "\b", "\b");
-        m[KeyPress.DEL] = ("_X", "_X", "_X", "_X");
-        m[KeyPress.LEFT] = ("_L", "_L", "_L", "_L");
-        m[KeyPress.RIGHT] = ("_R", "_R", "_R", "_R");
-        m[KeyPress.UP] = ("_U", "_U", "_U", "_U");
-        m[KeyPress.DOWN] = ("_D", "_D", "_D", "_D");
+            m[KeyPress.Num0 + i] = (i.ToString(), i.ToString(), i.ToString(), i.ToString());
+        m[KeyPress.NumMul] = ("*", "*", "", "");
+        m[KeyPress.NumDiv] = ("/", "/", "", "");
+        m[KeyPress.NumAdd] = ("+", "+", "", "");
+        m[KeyPress.NumSub] = ("-", "-", "", "");
+        m[KeyPress.NumDecimal] = (".", ".", "", "");
+        m[KeyPress.Period] = (".", ">", "", "");
+        m[KeyPress.EqualsKey] = ("=", "+", "", "");
+        m[KeyPress.Comma] = (",", "<", "", "");
+        m[KeyPress.Minus] = ("-", "_", "", "");
+        m[KeyPress.Space] = (" ", " ", "", "");
+        m[KeyPress.Enter] = ("\n", "\n ", "\n", "\n");
+        m[KeyPress.Oem1] = (";", ":", "", "");
+        m[KeyPress.Oem2] = ("/", "?", "", "");
+        m[KeyPress.Oem3] = ("'", "@", "", "");
+        m[KeyPress.Oem4] = ("[", "{", "", "");
+        m[KeyPress.Oem5] = ("\\", "|", "", "");
+        m[KeyPress.Oem6] = ("]", "}", "", "");
+        m[KeyPress.Oem7] = ("#", "~", "", "");
+        m[KeyPress.Tab] = ("\t", "\t", "\t", "\t");
+        m[KeyPress.Back] = ("\b", "\b", "\b", "\b");
+        m[KeyPress.Delete] = ("_X", "_X", "_X", "_X");
+        m[KeyPress.Left] = ("_L", "_L", "_L", "_L");
+        m[KeyPress.Right] = ("_R", "_R", "_R", "_R");
+        m[KeyPress.Up] = ("_U", "_U", "_U", "_U");
+        m[KeyPress.Down] = ("_D", "_D", "_D", "_D");
         return m;
     }
 
@@ -922,7 +921,7 @@ public abstract class PixelGameEngine
     // O-------------------------------------------------------------------O
 
     /// <summary>Key that closes the console.</summary>
-    private KeyPress _consoleExitKey = KeyPress.ESCAPE;
+    private KeyPress _consoleExitKey = KeyPress.Escape;
     /// <summary>The wrapped/scrolled lines of console output.</summary>
     private readonly List<string> _consoleLines = new();
     /// <summary>Write cursor (column, row) within the console line buffer.</summary>
@@ -1692,12 +1691,12 @@ public abstract class PixelGameEngine
             var cv = Vector256.Create(c);
             var kv128 = Vector128.Create(kr, kg, kb, 0f);
             var kv = Vector256.Create(kv128, kv128);
-            var alpha128 = Vector128.Create((byte)0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
+            var alpha128 = Vector128.Create(0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
             var alphaMask = Vector256.Create(alpha128, alpha128);
             var limit = bytes.Length - (bytes.Length & 31);
             for (; byteOffset < limit; byteOffset += 32)
             {
-                var b = Vector256.Create<byte>(bytes.Slice(byteOffset, 32));
+                var b = Vector256.Create(bytes.Slice(byteOffset, 32));
                 var lo = Vector256.WidenLower(b);
                 var hi = Vector256.WidenUpper(b);
                 var f0 = Vector256.ConvertToSingle(Vector256.WidenLower(lo).AsInt32());
@@ -1715,11 +1714,11 @@ public abstract class PixelGameEngine
         {
             var cv = Vector128.Create(c);
             var kv = Vector128.Create(kr, kg, kb, 0f);
-            var alphaMask = Vector128.Create((byte)0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
+            var alphaMask = Vector128.Create(0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
             var limit = bytes.Length - (bytes.Length & 15);
             for (; byteOffset < limit; byteOffset += 16)
             {
-                var b = Vector128.Create<byte>(bytes.Slice(byteOffset, 16));
+                var b = Vector128.Create(bytes.Slice(byteOffset, 16));
                 var lo = Vector128.WidenLower(b);
                 var hi = Vector128.WidenUpper(b);
                 var f0 = Vector128.ConvertToSingle(Vector128.WidenLower(lo).AsInt32());
@@ -2345,7 +2344,7 @@ public abstract class PixelGameEngine
         FillTexturedTriangle(_polyPos3, _polyTex3, _polyCol3, sprTex);
     }
 
-    /// <summary>Fills the 4-point scratch with a quad (CCW from bottom-left) for sprite/decal patch drawing.</summary>
+    /// <summary>Fills the 4-point scratch with a quad (CounterClockWise from bottom-left) for sprite/decal patch drawing.</summary>
     /// <param name="pos">Top-left corner of the quad, in pixels.</param>
     /// <param name="s">Quad size (width and height), in pixels.</param>
     private void FillPatchVerts(Vector2d<float> pos, Vector2d<float> s)
@@ -2848,7 +2847,7 @@ public abstract class PixelGameEngine
     {
         var newColours = new Pixel[colours.Count];
         for (var i = 0; i < colours.Count; i++) newColours[i] = colours[i] * tint;
-        DrawPolygonDecal(decal, pos, uv, (IReadOnlyList<Pixel>)newColours);
+        DrawPolygonDecal(decal, pos, uv, newColours);
     }
 
     /// <summary>Overload of DrawPolygonDecal with per-vertex depth (W) and a single tint.</summary>
@@ -2915,7 +2914,7 @@ public abstract class PixelGameEngine
         _decalMode = m;
     }
 
-    /// <summary>Fills the 4-point scratch with an axis-aligned quad (CW from top-left) for colour-quad decals.</summary>
+    /// <summary>Fills the 4-point scratch with an axis-aligned quad (ClockWise from top-left) for colour-quad decals.</summary>
     /// <param name="pos">Top-left corner of the quad in pixel space.</param>
     /// <param name="size">Width and height of the quad in pixels.</param>
     private void FillScratchQuad(Vector2d<float> pos, Vector2d<float> size)

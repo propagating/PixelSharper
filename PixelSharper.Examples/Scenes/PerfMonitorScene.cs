@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using PixelSharper.Core.Components;
 using PixelSharper.Core.Enums;
 using PixelSharper.Core.Types;
@@ -46,7 +44,7 @@ public class PerfMonitorScene : IExampleScene
     public void Update(Showcase e, float dt)
     {
         _t += dt;
-        if (e.GetKey(KeyPress.TAB).Pressed) _showOverlay = !_showOverlay;
+        if (e.GetKey(KeyPress.Tab).Pressed) _showOverlay = !_showOverlay;
         if (e.GetKey(KeyPress.R).Pressed) _perf.Reset();
 
         // (1) TRANSPARENT timing via the proxy — recorded as "IExampleScene.Update".

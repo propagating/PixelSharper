@@ -115,8 +115,7 @@ public class Sprite
             SpriteDisplayMode.Periodic => 
                 PixelData[int.Abs(y % Height) * Width + int.Abs(x % Width)],
             _ => 
-                PixelData[
-                Math.Max(0, Math.Min(y, Height - 1)) * Width + Math.Max(0, Math.Min(x, Width - 1))]
+                PixelData[Math.Max(0, Math.Min(y, Height - 1)) * Width + Math.Max(0, Math.Min(x, Width - 1))]
         };
     }
 

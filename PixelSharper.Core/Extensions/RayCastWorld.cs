@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using PixelSharper.Core.Components;
 using PixelSharper.Core.Types;
 
@@ -322,7 +320,7 @@ public abstract class Engine : PGEX
 
         for (var x = 0; x < _screenSize.X; x++)
         {
-            var rayAngle = _cameraHeading - _fieldOfView / 2f + (float)x / _floatScreenSize.X * _fieldOfView;
+            var rayAngle = _cameraHeading - _fieldOfView / 2f + x / _floatScreenSize.X * _fieldOfView;
             var rayDirX = MathF.Cos(rayAngle);
             var rayDirY = MathF.Sin(rayAngle);
 

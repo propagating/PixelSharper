@@ -7,11 +7,11 @@ namespace PixelSharper.Core.Enums;
 public enum FileReadCode : sbyte
 {
     /// <summary>The requested file does not exist.</summary>
-    NO_FILE = -1,
+    NoFile = -1,
 
     /// <summary>The operation failed.</summary>
-    FAIL    = 0,
+    Fail    = 0,
 
     /// <summary>The operation succeeded.</summary>
-    OK      = 1,
+    Ok      = 1,
 }

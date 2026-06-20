@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using PixelSharper.Core.Components;
 using PixelSharper.Core.Enums;
 using PixelSharper.Core.Types;

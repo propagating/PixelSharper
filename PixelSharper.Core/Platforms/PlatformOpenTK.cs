@@ -46,31 +46,31 @@ public class PlatformOpenTK : Platform
         _window == null ? default : new Vector2d<int>(_window.ClientSize.X, _window.ClientSize.Y);
 
     /// <summary>Per-application start-up hook; nothing to do for GLFW.</summary>
-    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
-    public override FileReadCode ApplicationStartUp() => FileReadCode.OK;
+    /// <returns>Always <see cref="FileReadCode.Ok"/>.</returns>
+    public override FileReadCode ApplicationStartUp() => FileReadCode.Ok;
 
     /// <summary>Per-application clean-up; disposes the window.</summary>
-    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
+    /// <returns>Always <see cref="FileReadCode.Ok"/>.</returns>
     public override FileReadCode ApplicationCleanUp()
     {
         _window?.Dispose();
         _window = null;
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Per-thread start-up hook; no-op in the single-threaded model.</summary>
-    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
-    public override FileReadCode ThreadStartUp() => FileReadCode.OK;
+    /// <returns>Always <see cref="FileReadCode.Ok"/>.</returns>
+    public override FileReadCode ThreadStartUp() => FileReadCode.Ok;
 
     /// <summary>Per-thread clean-up hook; no-op in the single-threaded model.</summary>
-    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
-    public override FileReadCode ThreadCleanUp() => FileReadCode.OK;
+    /// <returns>Always <see cref="FileReadCode.Ok"/>.</returns>
+    public override FileReadCode ThreadCleanUp() => FileReadCode.Ok;
 
     /// <summary>Creates the GLFW window with a legacy/compatibility GL 2.1 context for OGL10 immediate mode.</summary>
     /// <param name="windowPos">Top-left screen position of the window, in pixels.</param>
     /// <param name="windowSize">Client area size of the window, in pixels.</param>
     /// <param name="fullScreen">When true, opens the window full-screen; otherwise normal/windowed.</param>
-    /// <returns>Always <see cref="FileReadCode.OK"/> once the window is created.</returns>
+    /// <returns>Always <see cref="FileReadCode.Ok"/> once the window is created.</returns>
     /// <remarks>
     /// <para>
     /// OGL10 immediate mode (<c>glBegin</c>/<c>glEnd</c>) requires a legacy/compatibility context. GLFW only
@@ -100,7 +100,7 @@ public class PlatformOpenTK : Platform
 
         _window = new NativeWindow(settings);
         _window.FileDrop += OnFileDrop;
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Files dropped since the last consume; null when none pending.</summary>
@@ -145,73 +145,73 @@ public class PlatformOpenTK : Platform
     /// <param name="enableVsync">When true, requests vertical-sync presentation.</param>
     /// <param name="viewPos">Top-left of the initial viewport rectangle, in pixels.</param>
     /// <param name="viewSize">Size of the initial viewport rectangle, in pixels.</param>
-    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window/renderer or device creation fails.</returns>
+    /// <returns><see cref="FileReadCode.Ok"/> on success; <see cref="FileReadCode.Fail"/> if there is no window/renderer or device creation fails.</returns>
     public override FileReadCode CreateGraphics(bool fullScreen, bool enableVsync, Vector2d<int> viewPos, Vector2d<int> viewSize)
     {
         if (_window == null || Renderer.Active == null)
-            return FileReadCode.FAIL;
+            return FileReadCode.Fail;
 
         // The NativeWindow created the GL context; make it current on this (engine) thread,
         // then hand it to the active renderer exactly as olc's CreateGraphics hands native
         // handles to renderer->CreateDevice.
         _window.Context.MakeCurrent();
-        if (Renderer.Active.CreateDevice(new List<object> { _window.Context }, fullScreen, enableVsync) != FileReadCode.OK)
-            return FileReadCode.FAIL;
+        if (Renderer.Active.CreateDevice(new List<object> { _window.Context }, fullScreen, enableVsync) != FileReadCode.Ok)
+            return FileReadCode.Fail;
 
         Renderer.Active.UpdateViewport(viewPos, viewSize);
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Sets the window title bar text.</summary>
     /// <param name="title">The text to display in the title bar.</param>
-    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window.</returns>
+    /// <returns><see cref="FileReadCode.Ok"/> on success; <see cref="FileReadCode.Fail"/> if there is no window.</returns>
     public override FileReadCode SetWindowTitle(string title)
     {
-        if (_window == null) return FileReadCode.FAIL;
+        if (_window == null) return FileReadCode.Fail;
         _window.Title = title;
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Toggles the window border between a resizable frame and borderless.</summary>
     /// <param name="showFrame">When true, shows a resizable frame; when false, makes the window borderless.</param>
-    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window.</returns>
+    /// <returns><see cref="FileReadCode.Ok"/> on success; <see cref="FileReadCode.Fail"/> if there is no window.</returns>
     public override FileReadCode ShowWindowFrame(bool showFrame = true)
     {
-        if (_window == null) return FileReadCode.FAIL;
+        if (_window == null) return FileReadCode.Fail;
         _window.WindowBorder = showFrame ? WindowBorder.Resizable : WindowBorder.Hidden;
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Repositions and resizes the window's client area.</summary>
     /// <param name="windowPos">New top-left screen position of the window, in pixels.</param>
     /// <param name="windowSize">New client area size, in pixels.</param>
-    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window.</returns>
+    /// <returns><see cref="FileReadCode.Ok"/> on success; <see cref="FileReadCode.Fail"/> if there is no window.</returns>
     public override FileReadCode SetWindowSize(Vector2d<int> windowPos, Vector2d<int> windowSize)
     {
-        if (_window == null) return FileReadCode.FAIL;
+        if (_window == null) return FileReadCode.Fail;
         _window.Location = new Vector2i(windowPos.X, windowPos.Y);
         _window.ClientSize = new Vector2i(windowSize.X, windowSize.Y);
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     /// <summary>No-op: the engine loop owns the cadence and pumps events via HandleSystemEvent.</summary>
-    /// <returns>Always <see cref="FileReadCode.OK"/>.</returns>
+    /// <returns>Always <see cref="FileReadCode.Ok"/>.</returns>
     /// <seealso cref="HandleSystemEvent"/>
     public override FileReadCode StartSystemEventLoop()
     {
         // Single-threaded model: the engine loop owns the cadence and pumps via HandleSystemEvent.
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     /// <summary>Snapshots input for the new frame and dispatches pending GLFW events into it.</summary>
-    /// <returns><see cref="FileReadCode.OK"/> on success; <see cref="FileReadCode.FAIL"/> if there is no window.</returns>
+    /// <returns><see cref="FileReadCode.Ok"/> on success; <see cref="FileReadCode.Fail"/> if there is no window.</returns>
     public override FileReadCode HandleSystemEvent()
     {
-        if (_window == null) return FileReadCode.FAIL;
+        if (_window == null) return FileReadCode.Fail;
         // Snapshot input for the new frame, then dispatch pending GLFW events into it.
         _window.NewInputFrame();
         NativeWindow.ProcessWindowEvents(false);
-        return FileReadCode.OK;
+        return FileReadCode.Ok;
     }
 
     // --- Input (pull model: the engine polls these each frame after HandleSystemEvent, then
@@ -225,7 +225,7 @@ public class PlatformOpenTK : Platform
     /// <returns><c>true</c> if the key is down this frame; <c>false</c> if up, unmapped, or there is no window.</returns>
     /// <remarks>
     /// <para>
-    /// <see cref="KeyPress.SHIFT"/> and <see cref="KeyPress.CTRL"/> report down if either the left or right
+    /// <see cref="KeyPress.Shift"/> and <see cref="KeyPress.Control"/> report down if either the left or right
     /// physical key is held, mirroring olc's single-modifier model; other keys resolve through <c>KeyMap</c>.
     /// </para>
     /// </remarks>
@@ -235,10 +235,10 @@ public class PlatformOpenTK : Platform
         var ks = _window.KeyboardState;
         return key switch
         {
-            KeyPress.NONE => false,
+            KeyPress.None => false,
             // olc's single SHIFT/CTRL keys cover either side.
-            KeyPress.SHIFT => ks.IsKeyDown(Keys.LeftShift) || ks.IsKeyDown(Keys.RightShift),
-            KeyPress.CTRL => ks.IsKeyDown(Keys.LeftControl) || ks.IsKeyDown(Keys.RightControl),
+            KeyPress.Shift => ks.IsKeyDown(Keys.LeftShift) || ks.IsKeyDown(Keys.RightShift),
+            KeyPress.Control => ks.IsKeyDown(Keys.LeftControl) || ks.IsKeyDown(Keys.RightControl),
             _ => KeyMap.TryGetValue(key, out var glfw) && ks.IsKeyDown(glfw)
         };
     }
@@ -271,7 +271,7 @@ public class PlatformOpenTK : Platform
     /// <remarks>
     /// <para>
     /// Letters, digits, function keys, and keypad digits are filled by contiguous-range arithmetic; the
-    /// remaining named/OEM keys are mapped explicitly. <see cref="KeyPress.OEM_8"/> has no portable GLFW
+    /// remaining named/OEM keys are mapped explicitly. <see cref="KeyPress.Oem8"/> has no portable GLFW
     /// equivalent and is left unmapped (so it always reads as not-down).
     /// </para>
     /// </remarks>
@@ -281,44 +281,44 @@ public class PlatformOpenTK : Platform
         for (var i = 0; i < 26; i++) map[KeyPress.A + i] = Keys.A + i;
         for (var i = 0; i < 10; i++) map[KeyPress.K0 + i] = Keys.D0 + i;
         for (var i = 0; i < 12; i++) map[KeyPress.F1 + i] = Keys.F1 + i;
-        for (var i = 0; i < 10; i++) map[KeyPress.NP0 + i] = Keys.KeyPad0 + i;
+        for (var i = 0; i < 10; i++) map[KeyPress.Num0 + i] = Keys.KeyPad0 + i;
 
-        map[KeyPress.UP] = Keys.Up;
-        map[KeyPress.DOWN] = Keys.Down;
-        map[KeyPress.LEFT] = Keys.Left;
-        map[KeyPress.RIGHT] = Keys.Right;
-        map[KeyPress.SPACE] = Keys.Space;
-        map[KeyPress.TAB] = Keys.Tab;
-        map[KeyPress.INS] = Keys.Insert;
-        map[KeyPress.DEL] = Keys.Delete;
-        map[KeyPress.HOME] = Keys.Home;
-        map[KeyPress.END] = Keys.End;
-        map[KeyPress.PGUP] = Keys.PageUp;
-        map[KeyPress.PGDN] = Keys.PageDown;
-        map[KeyPress.BACK] = Keys.Backspace;
-        map[KeyPress.ESCAPE] = Keys.Escape;
-        map[KeyPress.RETURN] = Keys.Enter;
-        map[KeyPress.ENTER] = Keys.KeyPadEnter;
-        map[KeyPress.PAUSE] = Keys.Pause;
-        map[KeyPress.SCROLL] = Keys.ScrollLock;
-        map[KeyPress.NP_MUL] = Keys.KeyPadMultiply;
-        map[KeyPress.NP_DIV] = Keys.KeyPadDivide;
-        map[KeyPress.NP_ADD] = Keys.KeyPadAdd;
-        map[KeyPress.NP_SUB] = Keys.KeyPadSubtract;
-        map[KeyPress.NP_DECIMAL] = Keys.KeyPadDecimal;
-        map[KeyPress.PERIOD] = Keys.Period;
-        map[KeyPress.EQUALS] = Keys.Equal;
-        map[KeyPress.COMMA] = Keys.Comma;
-        map[KeyPress.MINUS] = Keys.Minus;
-        map[KeyPress.OEM_1] = Keys.Semicolon;
-        map[KeyPress.OEM_2] = Keys.Slash;
-        map[KeyPress.OEM_3] = Keys.GraveAccent;
-        map[KeyPress.OEM_4] = Keys.LeftBracket;
-        map[KeyPress.OEM_5] = Keys.Backslash;
-        map[KeyPress.OEM_6] = Keys.RightBracket;
-        map[KeyPress.OEM_7] = Keys.Apostrophe;
+        map[KeyPress.Up] = Keys.Up;
+        map[KeyPress.Down] = Keys.Down;
+        map[KeyPress.Left] = Keys.Left;
+        map[KeyPress.Right] = Keys.Right;
+        map[KeyPress.Space] = Keys.Space;
+        map[KeyPress.Tab] = Keys.Tab;
+        map[KeyPress.Insert] = Keys.Insert;
+        map[KeyPress.Delete] = Keys.Delete;
+        map[KeyPress.Home] = Keys.Home;
+        map[KeyPress.End] = Keys.End;
+        map[KeyPress.PageUp] = Keys.PageUp;
+        map[KeyPress.PageDown] = Keys.PageDown;
+        map[KeyPress.Back] = Keys.Backspace;
+        map[KeyPress.Escape] = Keys.Escape;
+        map[KeyPress.Return] = Keys.Enter;
+        map[KeyPress.Enter] = Keys.KeyPadEnter;
+        map[KeyPress.Pause] = Keys.Pause;
+        map[KeyPress.Scroll] = Keys.ScrollLock;
+        map[KeyPress.NumMul] = Keys.KeyPadMultiply;
+        map[KeyPress.NumDiv] = Keys.KeyPadDivide;
+        map[KeyPress.NumAdd] = Keys.KeyPadAdd;
+        map[KeyPress.NumSub] = Keys.KeyPadSubtract;
+        map[KeyPress.NumDecimal] = Keys.KeyPadDecimal;
+        map[KeyPress.Period] = Keys.Period;
+        map[KeyPress.EqualsKey] = Keys.Equal;
+        map[KeyPress.Comma] = Keys.Comma;
+        map[KeyPress.Minus] = Keys.Minus;
+        map[KeyPress.Oem1] = Keys.Semicolon;
+        map[KeyPress.Oem2] = Keys.Slash;
+        map[KeyPress.Oem3] = Keys.GraveAccent;
+        map[KeyPress.Oem4] = Keys.LeftBracket;
+        map[KeyPress.Oem5] = Keys.Backslash;
+        map[KeyPress.Oem6] = Keys.RightBracket;
+        map[KeyPress.Oem7] = Keys.Apostrophe;
         // OEM_8 has no portable GLFW equivalent; left unmapped (reads as not-down).
-        map[KeyPress.CAPS_LOCK] = Keys.CapsLock;
+        map[KeyPress.CapsLock] = Keys.CapsLock;
         return map;
     }
 }
