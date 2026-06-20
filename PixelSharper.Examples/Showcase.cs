@@ -47,15 +47,25 @@ public class Showcase : PixelGameEngine
     /// <summary>Count of auto-advances performed; used to stop after every scene is visited.</summary>
     private int _advances;
 
+    /// <summary>When set (--ogl10), drive the showcase with the legacy fixed-function OGL10 renderer instead of the default shader-based OGL33 backend.</summary>
+    private readonly bool _useOgl10;
+
     /// <summary>Builds the showcase over the given scenes, optionally in auto-test mode.</summary>
     /// <param name="scenes">The ordered scenes to page through; materialised into the internal list.</param>
     /// <param name="autoAdvance">When <c>true</c> (the <c>--autotest</c> mode), auto-advances through every scene then exits, smoke-testing each scene; defaults to <c>false</c>.</param>
-    public Showcase(IEnumerable<IExampleScene> scenes, bool autoAdvance = false)
+    /// <param name="useOgl10">When <c>true</c> (the <c>--ogl10</c> flag), uses the legacy fixed-function <c>RendererOgl10</c> backend instead of the default shader-based OGL33 one.</param>
+    public Showcase(IEnumerable<IExampleScene> scenes, bool autoAdvance = false, bool useOgl10 = false)
     {
         ApplicationName = "PixelSharper Showcase";
         _scenes = scenes.ToList();
         _autoAdvance = autoAdvance;
+        _useOgl10 = useOgl10;
     }
+
+    /// <summary>Selects the GL backend: the legacy <c>RendererOgl10</c> when <c>--ogl10</c> was passed, else the default shader-based OGL33.</summary>
+    /// <returns>A new <c>RendererOgl10</c> when opted in; otherwise the base default renderer (OGL33).</returns>
+    protected override PixelSharper.Core.Components.Renderer CreateRenderer() =>
+        _useOgl10 ? new PixelSharper.Core.Renderers.RendererOgl10() : base.CreateRenderer();
 
     /// <summary>First y coordinate a scene should draw within (just below the header).</summary>
     /// <value>The y coordinate one pixel below the header strip.</value>

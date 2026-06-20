@@ -95,8 +95,16 @@ public abstract class PixelGameEngine
     /// <remarks>Created in <see cref="Start"/>; the OpenTK implementation of olc's <c>Platform</c>.</remarks>
     private PlatformOpenTK _platform = null!;
     /// <summary>The active GL rendering device.</summary>
-    /// <remarks>Created in <see cref="Start"/> and also published via <c>Renderer.Active</c>; the fixed-function OGL10 backend.</remarks>
-    private RendererOgl10 _renderer = null!;
+    /// <remarks>Created in <see cref="Start"/> via <see cref="CreateRenderer"/> and also published via <c>Renderer.Active</c>; defaults to the shader-based <see cref="RendererOgl33"/> backend (override <see cref="CreateRenderer"/> for the fixed-function <see cref="RendererOgl10"/> fallback).</remarks>
+    private Renderer _renderer = null!;
+
+    /// <summary>
+    /// Creates the GL rendering backend used by <see cref="Start"/>. Override to select a different
+    /// device — e.g. <c>return new RendererOgl10();</c> for the fixed-function fallback (pre-3.3
+    /// hardware) instead of the default shader-based <see cref="RendererOgl33"/>.
+    /// </summary>
+    /// <returns>The renderer instance to drive this engine; defaults to a new <see cref="RendererOgl33"/> (matching olc's own default).</returns>
+    protected virtual Renderer CreateRenderer() => new RendererOgl33();
 
     /// <summary>The layer stack (layer 0 always exists); rendered back-to-front.</summary>
     /// <remarks>A <see cref="List{T}"/> of <see cref="LayerDesc"/>; <see cref="LayerDesc"/> is a class so layers can be mutated in place.</remarks>
@@ -286,7 +294,7 @@ public abstract class PixelGameEngine
     {
         // Wire up the platform + renderer and the static back-references olc keeps as globals.
         _platform = new PlatformOpenTK();
-        _renderer = new RendererOgl10();
+        _renderer = CreateRenderer();
         Renderer.Active = _renderer;
         Renderer.PtrPGE = this;
         Platform.PtrPGE = this;

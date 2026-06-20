@@ -29,9 +29,11 @@ var scenes = new IExampleScene[]
 };
 
 // Pass --autotest to cycle through every scene and exit (a smoke test of all scenes).
-var autotest = args.Length > 0 && args[0] == "--autotest";
+// Pass --ogl10 to drive the showcase with the legacy fixed-function renderer instead of the default OGL33.
+var autotest = args.Contains("--autotest");
+var useOgl10 = args.Contains("--ogl10");
 
-var showcase = new Showcase(scenes, autotest);
+var showcase = new Showcase(scenes, autotest, useOgl10);
 if (showcase.Construct(640, 480, 1, 1, vsync: true) == FileReadCode.Ok)
 {
     if (!autotest) _ = new SplashScreen(); // auto-hooks: plays the OLC splash before the showcase

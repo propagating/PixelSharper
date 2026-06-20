@@ -90,5 +90,37 @@ namespace PixelSharperTests
             var d = new Decal(id, new Sprite(2, 2));
             Assert.AreEqual(id, d.Id);
         }
+
+        // The OGL33 backend composes projection x MVP on the CPU per GPU task (olc's matMVP loop). The
+        // rest of RendererOgl33 is raw GL and needs a live context, but this column-major multiply is
+        // pure arithmetic and is the one piece worth pinning down without a window.
+        [Test]
+        public void Ogl33_MultiplyProjection_Identity_LeavesMvpUnchanged()
+        {
+            // Arrange
+            var identity = new float[16] { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+            var mvp = new float[16] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+
+            // Act
+            var result = PixelSharper.Core.Renderers.RendererOgl33.MultiplyProjection(identity, mvp);
+
+            // Assert
+            Assert.AreEqual(mvp, result);
+        }
+
+        [Test]
+        public void Ogl33_MultiplyProjection_ScaleTimesScale_MultipliesDiagonals()
+        {
+            // Arrange — column-major uniform-scale matrices diag(2) and diag(3) (w stays 1).
+            var proj = new float[16] { 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1 };
+            var mvp = new float[16] { 3, 0, 0, 0, 0, 3, 0, 0, 0, 0, 3, 0, 0, 0, 0, 1 };
+
+            // Act
+            var result = PixelSharper.Core.Renderers.RendererOgl33.MultiplyProjection(proj, mvp);
+
+            // Assert — product is diag(6) with w == 1.
+            var expected = new float[16] { 6, 0, 0, 0, 0, 6, 0, 0, 0, 0, 6, 0, 0, 0, 0, 1 };
+            Assert.AreEqual(expected, result);
+        }
     }
 }
