@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore PixelSharper.sln
+
+      # Core builds with <TreatWarningsAsErrors>, so any new warning fails the build here.
+      - name: Build (Release)
+        run: dotnet build PixelSharper.sln -c Release --no-restore
+
+      # Unit tests are headless (no GL/AL context required), so they run on a display-less runner.
+      - name: Test (Release)
+        run: dotnet test PixelSharper.sln -c Release --no-build --verbosity normal
+
+      # Verify the library still packs to a referenceable .nupkg (the NESharp consumer path).
+      - name: Pack (Core)
+        run: dotnet pack PixelSharper.Core/PixelSharper.Core.csproj -c Release --no-build -o artifacts
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PixelSharper.Core.nupkg
+          path: artifacts/*.nupkg
+          if-no-files-found: error
