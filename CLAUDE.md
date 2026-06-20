@@ -37,7 +37,7 @@ Target framework is **net10.0**, `LangVersion latestmajor` (C# 14), `Nullable` a
 - `Types/` — math/value types: `Vector2d<T>`, `Vertex`, `LayerDesc`, `GpuTask`.
 - `Enums/` — one enum per file (`DecalMode`, `CullMode`, `FileReadCode`, `Mouse`, `KeyPress`, …).
 - `Resources/` — asset/pack I/O: `ResourcePack`, `ResourceFile`, `ResourceBuffer`, `ImageLoader`.
-- `Actions/`, `Instance/` — `Renderable`, `DecalInstance`. **Note:** the folder layout and namespaces are not fully in sync (e.g. `Instance/DecalInstance.cs` declares `namespace PixelSharper.Core.Actions`). Match the *namespace* a type already uses, not its folder, until this is reconciled.
+- `Actions/` — `Renderable` and `DecalInstance`, both in `namespace PixelSharper.Core.Actions` (folder and namespace now reconciled; the old `Instance/` folder, which held `DecalInstance` under the `Actions` namespace, was removed).
 - `PixelGameEngine` (`PixelGameEngine.cs`, formerly `CoreEngine.cs`) — abstract base the user subclasses, mirroring `olc::PixelGameEngine`. Override `OnCreate()` / `OnUpdate(float)`; call `Construct(...)` then `Start()`. See `PixelSharperEngine` in `Program.cs` for the pattern.
 
 **Porting idioms established in the codebase — follow these:**
