@@ -11,14 +11,27 @@ public class ResourceTests
     [Test]
     public void AddFilesToResourcePack()
     {
-        var resourcePack = new ResourcePack();
-        var directory = new DirectoryInfo("E:\\Projects\\C#\\PixelSharper\\PixelSharper.Core");
-        var fileList = directory.GetFiles();
-        foreach (var file in fileList)
+        // Build a temp directory with known files so the test is portable (no hardcoded machine path,
+        // which previously broke on any machine but the author's — including CI).
+        var directory = Directory.CreateTempSubdirectory("pixelsharper_respack_");
+        try
         {
-            resourcePack.AddFileToPack(file.FullName);
+            File.WriteAllText(Path.Combine(directory.FullName, "a.txt"), "alpha");
+            File.WriteAllBytes(Path.Combine(directory.FullName, "b.bin"), [1, 2, 3, 4]);
+            File.WriteAllText(Path.Combine(directory.FullName, "c.dat"), "gamma payload");
+
+            var resourcePack = new ResourcePack();
+            var fileList = directory.GetFiles();
+            foreach (var file in fileList)
+            {
+                resourcePack.AddFileToPack(file.FullName);
+            }
+            Assert.AreEqual(fileList.Length, resourcePack.FileMap.Count);
         }
-        Assert.AreEqual(resourcePack.FileMap.Count, fileList.Length);
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
     }
     
     
