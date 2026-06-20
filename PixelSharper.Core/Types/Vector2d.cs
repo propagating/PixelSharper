@@ -537,7 +537,7 @@ public struct Vector2d<T> : IEquatable<Vector2d<T>> where T : struct, INumber<T>
     /// <param name="obj">The object to compare against.</param>
     /// <returns><c>true</c> if <paramref name="obj"/> is a <see cref="Vector2d{T}"/> with equal components; otherwise <c>false</c>.</returns>
     /// <seealso cref="Equals(Vector2d{T})"/>
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (obj is Vector2d<T> other)
         {

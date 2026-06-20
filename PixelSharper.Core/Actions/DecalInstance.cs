@@ -20,7 +20,7 @@ namespace PixelSharper.Core.Actions;
 public class DecalInstance
 {
     /// <summary>The decal (texture) to draw, or null for a solid-colour quad.</summary>
-    public Decal Decal;
+    public Decal? Decal;
     /// <summary>Screen-space vertex positions.</summary>
     public List<Vector2d<float>> Pos = new();
     /// <summary>Per-vertex texture coordinates.</summary>

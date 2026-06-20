@@ -12,13 +12,13 @@ namespace PixelSharper.Core.Types;
 /// constrained only to <see cref="INumber{T}"/> (so <c>Vector2d&lt;int&gt;</c> stays valid), and these operations
 /// require <see cref="IFloatingPoint{TSelf}"/>. Because the struct has no parameterless <c>Round</c>/<c>Truncate</c>/
 /// <c>Floor</c>/<c>Ceiling</c> members, these extensions are <b>not shadowed</b> and bind cleanly — and they only
-/// exist for floating <typeparamref name="T"/> (<c>float</c>, <c>double</c>, <c>Half</c>, <c>decimal</c>, …),
+/// exist for floating <c>T</c> (<c>float</c>, <c>double</c>, <c>Half</c>, <c>decimal</c>, …),
 /// where rounding is meaningful. (Contrast the in-place <see cref="Vector2d{T}.Magnitude"/>/<see cref="Vector2d{T}.ToPolar"/>
 /// fast paths, which had to be specialized inside the existing methods because same-named extensions would be shadowed.)
 /// </para>
 /// <para>
 /// Unlike the cross-type <see cref="Vector2d{T}.Floor{TFloating}"/>/<see cref="Vector2d{T}.Ceiling{TFloating}"/>
-/// (which convert to a different floating type), these stay in <typeparamref name="T"/> and call the
+/// (which convert to a different floating type), these stay in <c>T</c> and call the
 /// <see cref="IFloatingPoint{TSelf}"/> members directly.
 /// </para>
 /// </remarks>

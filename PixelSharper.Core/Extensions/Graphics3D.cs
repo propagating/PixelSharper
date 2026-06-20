@@ -373,7 +373,7 @@ public class Mesh
         foreach (var line in File.ReadLines(filename))
         {
             if (line.Length < 2) continue;
-            var parts = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+            var parts = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
             if (line[0] == 'v' && line[1] == 't') texs.Add(new Vec2d { X = F(parts[1]), Y = 1f - F(parts[2]) });
             else if (line[0] == 'v' && line[1] == 'n') { /* normals not used */ }
             else if (line[0] == 'v') verts.Add(new Vec3d { X = F(parts[1]), Y = F(parts[2]), Z = F(parts[3]), W = 1 });
@@ -417,7 +417,7 @@ public class PipeLine
     /// <summary>World (model) transform.</summary>
     private Mat _matWorld = Gfx3dMath.MatMakeIdentity();
     /// <summary>Bound texture for textured rendering.</summary>
-    private Sprite _texture;
+    private Sprite _texture = null!;
     /// <summary>Viewport origin and size in screen pixels.</summary>
     private float _viewX, _viewY, _viewW, _viewH;
     /// <summary>The four light slots.</summary>
@@ -639,7 +639,7 @@ public class PipeLine
 public static class Gfx3d
 {
     /// <summary>Per-pixel depth (1/w) buffer, sized to the screen.</summary>
-    private static float[] _depthBuffer;
+    private static float[] _depthBuffer = null!;
 
     /// <summary>The active engine (set when a PixelGameEngine is constructed); exposed for the PipeLine.</summary>
     /// <value>The current <see cref="PixelGameEngine"/> instance, forwarded from <see cref="PGEX.Pge"/>.</value>

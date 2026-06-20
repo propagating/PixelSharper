@@ -305,7 +305,7 @@ public class Manager : PGEX
     /// (a submenu was pushed onto the stack, a disabled item was hit, or no panel is open).
     /// </returns>
     /// <seealso cref="Menu.OnConfirm"/>
-    public Menu OnConfirm()
+    public Menu? OnConfirm()
     {
         if (_panels.Count == 0) return null;
         var back = _panels[^1];

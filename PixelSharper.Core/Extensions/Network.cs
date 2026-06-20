@@ -79,10 +79,10 @@ public class OwnedMessage<T> where T : struct, Enum
 {
     /// <summary>The originating connection (server side); null on a client.</summary>
     /// <value>The <see cref="Connection{T}"/> the message arrived from on a server, or <c>null</c> on a client.</value>
-    public Connection<T> Remote;
+    public Connection<T>? Remote;
     /// <summary>The wrapped message.</summary>
     /// <value>The carried <see cref="Message{T}"/>.</value>
-    public Message<T> Msg;
+    public Message<T> Msg = null!;
 }
 
 /// <summary>A thread-safe double-ended queue with a blocking Wait().</summary>
@@ -99,17 +99,17 @@ public class TsQueue<T>
 
     /// <summary>Peeks the front item.</summary>
     /// <returns>The item at the front of the queue without removing it.</returns>
-    public T Front() { lock (_lock) return _deque.First.Value; }
+    public T Front() { lock (_lock) return _deque.First!.Value; }
     /// <summary>Peeks the back item.</summary>
     /// <returns>The item at the back of the queue without removing it.</returns>
-    public T Back() { lock (_lock) return _deque.Last.Value; }
+    public T Back() { lock (_lock) return _deque.Last!.Value; }
 
     /// <summary>Removes and returns the front item.</summary>
     /// <returns>The item removed from the front of the queue.</returns>
-    public T PopFront() { lock (_lock) { var v = _deque.First.Value; _deque.RemoveFirst(); return v; } }
+    public T PopFront() { lock (_lock) { var v = _deque.First!.Value; _deque.RemoveFirst(); return v; } }
     /// <summary>Removes and returns the back item.</summary>
     /// <returns>The item removed from the back of the queue.</returns>
-    public T PopBack() { lock (_lock) { var v = _deque.Last.Value; _deque.RemoveLast(); return v; } }
+    public T PopBack() { lock (_lock) { var v = _deque.Last!.Value; _deque.RemoveLast(); return v; } }
 
     /// <summary>Appends an item to the back and signals a waiter.</summary>
     /// <param name="item">The item to append to the back of the queue.</param>
@@ -154,7 +154,7 @@ public class Connection<T> where T : struct, Enum
     /// <summary>The underlying TCP socket.</summary>
     private readonly Socket _socket;
     /// <summary>Stream wrapper used for async reads/writes.</summary>
-    private NetworkStream _stream;
+    private NetworkStream _stream = null!;
     /// <summary>Whether this is the server or client side.</summary>
     private readonly Owner _ownerType;
     /// <summary>Shared inbound queue messages are pushed onto.</summary>
@@ -173,7 +173,7 @@ public class Connection<T> where T : struct, Enum
     /// <summary>Server-assigned connection id.</summary>
     private uint _id;
     /// <summary>Owning server interface (server side only).</summary>
-    private ServerInterface<T> _server;
+    private ServerInterface<T> _server = null!;
 
     /// <summary>Creates a connection; on the server side, primes the handshake challenge from the seed.</summary>
     /// <param name="owner">Whether this end is the <see cref="Owner.Server"/> or <see cref="Owner.Client"/>.</param>
@@ -365,7 +365,7 @@ public class Connection<T> where T : struct, Enum
 public class ClientInterface<T> where T : struct, Enum
 {
     /// <summary>The active connection to the server, if any.</summary>
-    private Connection<T> _connection;
+    private Connection<T>? _connection;
     /// <summary>Inbound message queue populated by the connection.</summary>
     private readonly TsQueue<OwnedMessage<T>> _qMessagesIn = new();
 
@@ -393,7 +393,7 @@ public class ClientInterface<T> where T : struct, Enum
     /// <summary>Closes the connection and clears it.</summary>
     public void Disconnect()
     {
-        if (IsConnected()) _connection.Disconnect();
+        if (IsConnected()) _connection!.Disconnect();
         _connection = null;
     }
 
@@ -402,7 +402,7 @@ public class ClientInterface<T> where T : struct, Enum
     public bool IsConnected() => _connection?.IsConnected() ?? false;
     /// <summary>Sends a message if connected.</summary>
     /// <param name="msg">The message to send; ignored if not connected.</param>
-    public void Send(Message<T> msg) { if (IsConnected()) _connection.Send(msg); }
+    public void Send(Message<T> msg) { if (IsConnected()) _connection!.Send(msg); }
     /// <summary>The inbound message queue to drain each tick.</summary>
     /// <returns>The <see cref="TsQueue{T}"/> of <see cref="OwnedMessage{T}"/> received from the server.</returns>
     public TsQueue<OwnedMessage<T>> Incoming() => _qMessagesIn;
@@ -484,7 +484,7 @@ public abstract class ServerInterface<T> where T : struct, Enum
     /// <param name="client">The destination connection.</param>
     /// <param name="msg">The message to send.</param>
     /// <remarks>If <paramref name="client"/> is null or disconnected, <see cref="OnClientDisconnect"/> fires and it is removed from <see cref="Connections"/>.</remarks>
-    public void MessageClient(Connection<T> client, Message<T> msg)
+    public void MessageClient(Connection<T>? client, Message<T> msg)
     {
         if (client != null && client.IsConnected())
         {
@@ -492,8 +492,8 @@ public abstract class ServerInterface<T> where T : struct, Enum
         }
         else
         {
-            OnClientDisconnect(client);
-            lock (Connections) Connections.Remove(client);
+            OnClientDisconnect(client!);
+            lock (Connections) Connections.Remove(client!);
         }
     }
 
@@ -501,7 +501,7 @@ public abstract class ServerInterface<T> where T : struct, Enum
     /// <param name="msg">The message to broadcast.</param>
     /// <param name="ignore">An optional connection to skip (e.g. the original sender); pass null to send to all.</param>
     /// <remarks>Dead connections fire <see cref="OnClientDisconnect"/> and are removed from <see cref="Connections"/> after the pass.</remarks>
-    public void MessageAllClients(Message<T> msg, Connection<T> ignore = null)
+    public void MessageAllClients(Message<T> msg, Connection<T>? ignore = null)
     {
         var dead = false;
         lock (Connections)
@@ -514,7 +514,7 @@ public abstract class ServerInterface<T> where T : struct, Enum
                 }
                 else
                 {
-                    OnClientDisconnect(client);
+                    OnClientDisconnect(client!);
                     dead = true;
                 }
             }
@@ -533,7 +533,7 @@ public abstract class ServerInterface<T> where T : struct, Enum
         while ((maxMessages < 0 || count < maxMessages) && !QMessagesIn.Empty())
         {
             var msg = QMessagesIn.PopFront();
-            OnMessage(msg.Remote, msg.Msg);
+            OnMessage(msg.Remote!, msg.Msg);
             count++;
         }
     }

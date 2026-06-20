@@ -30,13 +30,13 @@ namespace PixelSharper.Core.Components
         /// The engine this renderer serves. Mirrors olc's namespace-global <c>ptrPGE</c>; set by the
         /// platform layer during device creation.
         /// </summary>
-        public static PixelGameEngine PtrPGE;
+        public static PixelGameEngine PtrPGE = null!;
 
         /// <summary>
         /// The single active rendering device. Mirrors olc's namespace-global <c>renderer</c>; set by
         /// the platform layer once a concrete <see cref="Renderer"/> is constructed.
         /// </summary>
-        public static Renderer Active;
+        public static Renderer Active = null!;
 
         /// <summary>
         /// Texture ids awaiting deletion on the GL thread. GL calls are only valid on the thread that

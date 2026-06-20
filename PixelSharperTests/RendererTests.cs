@@ -53,7 +53,7 @@ namespace PixelSharperTests
         }
 
         [TearDown]
-        public void TearDown() => Renderer.Active = _previous;
+        public void TearDown() => Renderer.Active = _previous!;
 
         [Test]
         public void ScheduleTextureDelete_DefersUntilProcessOnGlThread()

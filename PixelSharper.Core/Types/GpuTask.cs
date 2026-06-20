@@ -18,7 +18,7 @@ namespace PixelSharper.Core.Types
         public List<Vertex> Vb { get; set; } = new();
         /// <summary>Decal (texture) to draw with; null until assigned when queued.</summary>
         /// <value>The texture decal; <c>null</c> until a task is queued.</value>
-        public Decal Decal { get; set; } // olc defaults decal to nullptr; assigned when a task is queued
+        public Decal Decal { get; set; } = null!; // olc defaults decal to nullptr; assigned when a task is queued
         /// <summary>Primitive layout of the vertex buffer (Fan/Strip/List).</summary>
         /// <value>How <see cref="Vb"/> is assembled into primitives; defaults to <see cref="DecalStructure.Fan"/>.</value>
         public DecalStructure Structure { get; set; } = DecalStructure.Fan;
@@ -48,7 +48,7 @@ namespace PixelSharper.Core.Types
         public void Reset()
         {
             Vb.Clear();
-            Decal = null;
+            Decal = null!;
             Structure = DecalStructure.Fan;
             Mode = DecalMode.Normal;
             Depth = false;

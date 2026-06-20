@@ -20,7 +20,7 @@ public class AudioSample
     /// <summary>Number of samples per channel.</summary>
     public long NSamples;
     /// <summary>Interleaved sample data normalised to [-1,1].</summary>
-    public float[] Sample;
+    public float[] Sample = null!;
     /// <summary>True once a WAV has been loaded successfully.</summary>
     public bool Valid;
 
@@ -115,7 +115,7 @@ public static class Sound
     /// <summary>Wall-clock time accumulated by the mixer thread.</summary>
     private static float _globalTime;
     /// <summary>The background mixing thread.</summary>
-    private static Thread _audioThread;
+    private static Thread _audioThread = null!;
 
     // OpenAL
     /// <summary>The opened OpenAL device.</summary>
@@ -123,7 +123,7 @@ public static class Sound
     /// <summary>The OpenAL context.</summary>
     private static ALContext _context;
     /// <summary>The pool of streaming buffer ids.</summary>
-    private static int[] _buffers;
+    private static int[] _buffers = null!;
     /// <summary>The single streaming source id.</summary>
     private static int _source;
     /// <summary>Buffer ids not currently queued on the source.</summary>
@@ -131,7 +131,7 @@ public static class Sound
     /// <summary>Output sample rate, channel count, and per-block sample count.</summary>
     private static int _sampleRate, _channels, _blockSamples;
     /// <summary>Scratch PCM buffer for one mixed block.</summary>
-    private static short[] _blockMemory;
+    private static short[] _blockMemory = null!;
 
     /// <summary>Sets the optional user synth function (null to clear).</summary>
     /// <param name="func">A callback <c>(channel, globalTime, timeStep) =&gt; sample</c> mixed in alongside playing samples, or null to clear it.</param>
@@ -226,7 +226,7 @@ public static class Sound
 
         _device = ALC.OpenDevice(null);
         if (_device == ALDevice.Null) return DestroyAudio();
-        _context = ALC.CreateContext(_device, (int[])null);
+        _context = ALC.CreateContext(_device, (int[]?)null);
         ALC.MakeContextCurrent(_context);
 
         _buffers = AL.GenBuffers(blocks);
@@ -256,7 +256,7 @@ public static class Sound
         ALC.MakeContextCurrent(ALContext.Null);
         if (_context != ALContext.Null) ALC.DestroyContext(_context);
         if (_device != ALDevice.Null) ALC.CloseDevice(_device);
-        _buffers = null;
+        _buffers = null!;
         _source = 0;
         return false;
     }

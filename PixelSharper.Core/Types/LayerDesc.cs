@@ -51,7 +51,7 @@ namespace PixelSharper.Core.Types
         public Pixel Tint { get; set; }
         /// <summary>Optional per-layer update hook invoked each frame.</summary>
         /// <value>An optional callback run each frame for this layer; <c>null</c> if none.</value>
-        public Action FuncHook { get; set; }
+        public Action? FuncHook { get; set; }
 
         /// <summary>Initialises a hidden, unit-scaled layer with an empty draw target and fresh draw queues.</summary>
         public LayerDesc()

@@ -25,7 +25,7 @@ public class Sprite
     /// <value>The backing list of pixels, indexed as <c>y * Width + x</c>.</value>
     public List<Pixel> PixelData { get; set; } = new();
     /// <summary>Injected backend that decodes image files into sprites (test seam).</summary>
-    public static ImageLoader ImageLoader;
+    public static ImageLoader ImageLoader = null!;
 
     /// <summary>Value new sprite cells are initialised to — olc's nDefaultPixel (opaque black, 0xFF000000).</summary>
     public static Pixel DefaultPixel = new(0, 0, 0, 0xFF);

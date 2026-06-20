@@ -430,9 +430,9 @@ public class ResourcePack
     {
         //TODO: make this configurable
         const int iterations = 655360;
-        var keyGenerator = new Rfc2898DeriveBytes(password, Salt,
-                                                  iterations, HashAlgorithmName.SHA512);
-        //KeyBytes are 32*8 = 256 bits for AES
-        return keyGenerator.GetBytes(keyBytes);
+        // KeyBytes are 32*8 = 256 bits for AES. Rfc2898DeriveBytes.Pbkdf2 is the non-obsolete static API
+        // (the instance constructors are deprecated, SYSLIB0060); same PBKDF2/SHA-512 derivation over the
+        // fixed Salt, so the key is identical and existing encrypted packs still decrypt.
+        return Rfc2898DeriveBytes.Pbkdf2(password, Salt, iterations, HashAlgorithmName.SHA512, keyBytes);
     }
 }

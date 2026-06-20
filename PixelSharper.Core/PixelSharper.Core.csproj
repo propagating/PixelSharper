@@ -10,6 +10,9 @@
         <!-- Emit the XML doc file (packed into the .nupkg for consumer IntelliSense) and let the
              compiler validate that every parameter/return has a matching doc tag. -->
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <!-- The library builds warning-clean (nullable-reference + doc warnings all resolved); keep it
+             that way — any new warning fails the build so it gets fixed, not accumulated. -->
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
 
     <!-- NuGet package metadata: `dotnet pack -c Release` produces a referenceable .nupkg whose

@@ -36,7 +36,7 @@ public class DynamicQuadTree<T>
     /// <summary>The four child quadrant areas.</summary>
     private readonly Rect<float>[] _childRect = new Rect<float>[4];
     /// <summary>The four lazily-created child nodes.</summary>
-    private readonly DynamicQuadTree<T>[] _child = new DynamicQuadTree<T>[4];
+    private readonly DynamicQuadTree<T>?[] _child = new DynamicQuadTree<T>[4];
     /// <summary>Items held directly at this node (didn't fit a child).</summary>
     private readonly LinkedList<(Rect<float> Area, T Item)> _items = new();
 
@@ -79,7 +79,7 @@ public class DynamicQuadTree<T>
             if (Geom2D.Contains(_childRect[i], itemSize) && _depth + 1 < _maxDepth)
             {
                 _child[i] ??= new DynamicQuadTree<T>(_childRect[i], _depth + 1, _maxDepth);
-                return _child[i].Insert(item, itemSize);
+                return _child[i]!.Insert(item, itemSize);
             }
         }
 
@@ -93,7 +93,7 @@ public class DynamicQuadTree<T>
     {
         var count = _items.Count;
         for (var i = 0; i < 4; i++)
-            if (_child[i] != null) count += _child[i].Size();
+            if (_child[i] != null) count += _child[i]!.Size();
         return count;
     }
 
@@ -109,8 +109,8 @@ public class DynamicQuadTree<T>
         for (var i = 0; i < 4; i++)
         {
             if (_child[i] == null) continue;
-            if (Geom2D.Contains(area, _childRect[i])) _child[i].Items(result); // fully inside -> take all
-            else if (Geom2D.Overlaps(_childRect[i], area)) _child[i].Search(area, result);
+            if (Geom2D.Contains(area, _childRect[i])) _child[i]!.Items(result); // fully inside -> take all
+            else if (Geom2D.Overlaps(_childRect[i], area)) _child[i]!.Search(area, result);
         }
     }
 
@@ -121,7 +121,7 @@ public class DynamicQuadTree<T>
     {
         foreach (var p in _items) result.Add(p.Item);
         for (var i = 0; i < 4; i++)
-            if (_child[i] != null) _child[i].Items(result);
+            if (_child[i] != null) _child[i]!.Items(result);
     }
 
     /// <summary>Empties this node and drops its children. (olc's clear() kept child nodes, which left stale child areas after a Resize; dropping them keeps Resize correct.)</summary>

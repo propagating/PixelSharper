@@ -10,7 +10,7 @@ public class DecalPatch
 {
     /// <summary>The <see cref="Components.Decal"/> textured by this patch.</summary>
     /// <value>The decal whose texture supplies the patch's pixels.</value>
-    public Decal Decal { get; set; }
+    public Decal Decal { get; set; } = null!;
 
     /// <summary>
     /// The four corner coordinates of the patch. olc's DecalPatch holds a fixed

@@ -147,7 +147,7 @@ public static class Hw3d
     /// <remarks>Only triangle (3-vertex) faces are emitted; quads and larger polygons are skipped. OBJ indices are 1-based.</remarks>
     // Loads a Wavefront .obj (expects v/vt/vn faces; x is negated to match olc's handedness).
     // Returns null if the file can't be opened.
-    public static Mesh LoadObj(string path)
+    public static Mesh? LoadObj(string path)
     {
         if (!File.Exists(path)) return null;
 
@@ -162,7 +162,7 @@ public static class Hw3d
         foreach (var line in File.ReadLines(path))
         {
             if (line.Length < 2) continue;
-            var parts = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+            var parts = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
             if (line[0] == 'v')
             {
                 if (line[1] == 't') texs.Add(new Vector2d<float>(F(parts[1]), 1f - F(parts[2])));

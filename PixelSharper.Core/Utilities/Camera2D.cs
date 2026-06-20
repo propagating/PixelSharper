@@ -52,7 +52,7 @@ public class Camera2D
     /// <summary>Target value used when no provider is set.</summary>
     private Vector2d<float> _localTarget;
     /// <summary>Optional live target provider (olc's ref-pointer equivalent).</summary>
-    private Func<Vector2d<float>> _targetProvider;
+    private Func<Vector2d<float>>? _targetProvider;
 
     /// <summary>Whether the view is clamped to a world boundary.</summary>
     private bool _worldBoundary;

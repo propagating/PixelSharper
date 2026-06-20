@@ -24,6 +24,9 @@ public struct Vector3d : IEquatable<Vector3d>
     /// <value>The homogeneous w coordinate; ignored by equality.</value>
     public float W;
     
+    /// <summary>Indexes the components by position (0 = X, 1 = Y, 2 = Z).</summary>
+    /// <param name="i">The component index (0–2).</param>
+    /// <value>The component at index <paramref name="i"/>.</value>
     public double this[int i]
     {
         get
@@ -164,7 +167,7 @@ public struct Vector3d : IEquatable<Vector3d>
     /// <summary>Object equality.</summary>
     /// <param name="obj">The object to compare against.</param>
     /// <returns><c>true</c> if <paramref name="obj"/> is a <see cref="Vector3d"/> with equal X, Y and Z; otherwise <c>false</c>.</returns>
-    public override bool Equals(object obj) => obj is Vector3d v && Equals(v);
+    public override bool Equals(object? obj) => obj is Vector3d v && Equals(v);
     /// <summary>Hash over X, Y, Z.</summary>
     /// <returns>A hash code combining X, Y and Z (excluding <see cref="W"/>).</returns>
     public override int GetHashCode() => HashCode.Combine(X, Y, Z);

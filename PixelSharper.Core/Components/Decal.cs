@@ -12,7 +12,7 @@ public class Decal
     public int Id { get; set; }
     /// <summary>The source sprite whose pixels back this texture.</summary>
     /// <value>The backing <see cref="Sprite"/>, or <c>null</c> for an empty decal.</value>
-    public Sprite Sprite { get; set; }
+    public Sprite Sprite { get; set; } = null!;
     /// <summary>Reciprocal of sprite size; scales pixel coords to 0..1 UV space.</summary>
     /// <value>The per-axis reciprocal of the sprite size, mapping pixel coordinates to 0..1 UVs.</value>
     public Vector2d<float> UVScale { get; set; }
@@ -21,7 +21,7 @@ public class Decal
     public Decal()
     {
         Id = -1;
-        Sprite = null;
+        Sprite = null!;
         UVScale = new Vector2d<float>(1.0f, 1.0f);
     }
 

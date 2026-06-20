@@ -52,7 +52,7 @@ public class Renderable
         }
         else
         {
-            Sprite = null;
+            Sprite = null!;
             return FileReadCode.NO_FILE;
         }
     }

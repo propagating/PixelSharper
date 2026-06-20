@@ -10,7 +10,7 @@ public abstract class PGEX
 {
     /// <summary>The single active engine instance (olc::PGEX::pge), set when a PixelGameEngine is constructed.</summary>
     /// <value>The owning engine, shared by all extensions.</value>
-    protected internal static PixelGameEngine Pge;
+    protected internal static PixelGameEngine Pge = null!;
 
     /// <summary>Creates the extension; when hook is true, registers it with the engine for lifecycle callbacks.</summary>
     /// <param name="hook">When <c>true</c>, registers this extension with <see cref="Pge"/> so its lifecycle hooks are invoked automatically.</param>

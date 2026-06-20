@@ -40,7 +40,7 @@ namespace PixelSharperTests
             var chosen = man.OnConfirm();
 
             Assert.IsNotNull(chosen);
-            Assert.AreEqual("Quit", chosen.GetName());
+            Assert.AreEqual("Quit", chosen!.GetName());
             Assert.AreEqual(99, chosen.GetID());
         }
 
@@ -54,7 +54,7 @@ namespace PixelSharperTests
             Assert.IsNull(man.OnConfirm());     // descends -> no selection yet
 
             var chosen = man.OnConfirm();       // Sound (first item of submenu)
-            Assert.AreEqual("Sound", chosen.GetName());
+            Assert.AreEqual("Sound", chosen!.GetName());
 
             man.OnBack();                       // back to root; nothing crashes
         }
@@ -80,7 +80,7 @@ namespace PixelSharperTests
             // Up at the top stays at the first item.
             man.OnUp();
             man.OnUp();
-            Assert.AreEqual("Play", man.OnConfirm().GetName());
+            Assert.AreEqual("Play", man.OnConfirm()!.GetName());
 
             // Down past the end clamps to the last item.
             for (var i = 0; i < 10; i++) man.OnDown();

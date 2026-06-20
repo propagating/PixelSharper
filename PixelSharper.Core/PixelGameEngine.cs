@@ -22,7 +22,7 @@ public abstract class PixelGameEngine
 {
     /// <summary>The application name shown in the window title bar.</summary>
     /// <value>The text composed into the window caption alongside the FPS readout each second.</value>
-    public string ApplicationName { get; set; }
+    public string ApplicationName { get; set; } = null!;
     /// <summary>Override: called once after construction; return <c>false</c> to abort startup.</summary>
     /// <returns><c>true</c> to continue into the core loop; <c>false</c> to abort and tear down immediately.</returns>
     /// <remarks>Invoked by <see cref="Start"/> after the window, GL context, font sheet and layer 0 are ready, so GL-dependent setup is safe here.</remarks>
@@ -94,16 +94,16 @@ public abstract class PixelGameEngine
 
     /// <summary>The OS window / event-loop backend.</summary>
     /// <remarks>Created in <see cref="Start"/>; the OpenTK implementation of olc's <c>Platform</c>.</remarks>
-    private PlatformOpenTK _platform;
+    private PlatformOpenTK _platform = null!;
     /// <summary>The active GL rendering device.</summary>
     /// <remarks>Created in <see cref="Start"/> and also published via <c>Renderer.Active</c>; the fixed-function OGL10 backend.</remarks>
-    private RendererOgl10 _renderer;
+    private RendererOgl10 _renderer = null!;
 
     /// <summary>The layer stack (layer 0 always exists); rendered back-to-front.</summary>
     /// <remarks>A <see cref="List{T}"/> of <see cref="LayerDesc"/>; <see cref="LayerDesc"/> is a class so layers can be mutated in place.</remarks>
     private readonly List<LayerDesc> _layers = new();
     /// <summary>The sprite that software draw primitives currently write into.</summary>
-    private Sprite _drawTarget;
+    private Sprite _drawTarget = null!;
     /// <summary>Index of the layer whose draw target is currently active (for decal/GPU-task pooling).</summary>
     private byte _targetLayer;
 
@@ -140,12 +140,12 @@ public abstract class PixelGameEngine
     private static readonly Pixel[] WhiteQuad4 = { Pixel.WHITE, Pixel.WHITE, Pixel.WHITE, Pixel.WHITE };
     /// <summary>User-supplied blend function used when the pixel mode is Custom.</summary>
     /// <remarks>Receives (x, y, source, destination) and returns the blended <see cref="Pixel"/>; invoked only while <see cref="_pixelMode"/> is <c>Custom</c>.</remarks>
-    private Func<int, int, Pixel, Pixel, Pixel> _funcPixelMode;
+    private Func<int, int, Pixel, Pixel, Pixel> _funcPixelMode = null!;
     /// <summary>When true, layer draw-target sprites are not re-uploaded to their textures each frame.</summary>
     private bool _suspendTextureTransfer;
 
     /// <summary>The embedded 8x8 font as a 128x48 renderable sprite/decal.</summary>
-    private Renderable _fontRenderable;
+    private Renderable _fontRenderable = null!;
     /// <summary>Per-glyph proportional spacing (x offset, width) indexed by char minus 32.</summary>
     /// <remarks>Index 0 corresponds to the space character (ASCII 32); each entry stores the glyph's left offset and advance width in pixels.</remarks>
     private readonly List<Vector2d<int>> _fontSpacing = new();
@@ -722,7 +722,7 @@ public abstract class PixelGameEngine
     /// <summary>Keys (as int) that transitioned to Pressed this frame.</summary>
     private readonly List<int> _keyPressCache = new();
     /// <summary>Lazily-built table mapping a key + modifier to the character(s) it yields.</summary>
-    private Dictionary<KeyPress, (string Normal, string Shift, string Ctrl, string Alt)> _keyboardMap;
+    private Dictionary<KeyPress, (string Normal, string Shift, string Ctrl, string Alt)> _keyboardMap = null!;
     /// <summary>Whether the built-in console overlay is showing.</summary>
     private bool _consoleShow;
     /// <summary>Whether game time is frozen while the console is open.</summary>
@@ -934,9 +934,9 @@ public abstract class PixelGameEngine
     /// <summary>Pending console output awaiting drain into the line buffer.</summary>
     private readonly StringBuilder _consoleOutputBuffer = new();
     /// <summary>Lazily-created writer over the output buffer.</summary>
-    private TextWriter _consoleOutputWriter;
+    private TextWriter _consoleOutputWriter = null!;
     /// <summary>Saved System.Console.Out, restored when stdout capture is disabled.</summary>
-    private TextWriter _originalConsoleOut;
+    private TextWriter? _originalConsoleOut;
 
     /// <summary>Returns a TextWriter that feeds the console buffer (drained by UpdateConsole).</summary>
     /// <returns>A lazily-created <see cref="TextWriter"/> whose output is queued and drained into the console line buffer by <see cref="UpdateConsole"/>.</returns>
@@ -1197,7 +1197,7 @@ public abstract class PixelGameEngine
     /// <summary>Sets the software draw target to a sprite, or to layer 0 when null.</summary>
     /// <param name="target">The sprite to draw into; pass <c>null</c> to revert the draw target to layer <c>0</c>.</param>
     /// <seealso cref="SetDrawTarget(byte, bool)"/>
-    public void SetDrawTarget(Sprite target)
+    public void SetDrawTarget(Sprite? target)
     {
         if (target != null)
         {
@@ -2131,7 +2131,7 @@ public abstract class PixelGameEngine
     {
         var c = col ?? Pixel.WHITE;
         var task = NextGpuTask();
-        task.Decal = null;
+        task.Decal = null!; // no texture: wireframe line has no decal
         task.Mode = DecalMode.Wireframe;
         task.Structure = DecalStructure.Line;
         task.Depth = _hw3dDepthTest;
@@ -2156,7 +2156,7 @@ public abstract class PixelGameEngine
     {
         var c = col ?? Pixel.WHITE;
         var task = NextGpuTask();
-        task.Decal = null;
+        task.Decal = null!; // no texture: wireframe box has no decal
         task.Mode = _decalMode;
         task.Structure = DecalStructure.Line;
         task.Depth = _hw3dDepthTest;
@@ -2911,7 +2911,7 @@ public abstract class PixelGameEngine
         _decalMode = DecalMode.Wireframe;
         _scratchPts2[0] = pos1;
         _scratchPts2[1] = pos2;
-        DrawPolygonDecal(null, _scratchPts2, ZeroUv4, col);
+        DrawPolygonDecal(null!, _scratchPts2, ZeroUv4, col); // untextured colour line: no decal
         _decalMode = m;
     }
 
@@ -2938,7 +2938,7 @@ public abstract class PixelGameEngine
         SetDecalMode(DecalMode.Wireframe);
         FillScratchQuad(pos, size);
         _scratchCol4[0] = _scratchCol4[1] = _scratchCol4[2] = _scratchCol4[3] = c;
-        DrawExplicitDecal(null, _scratchPts4, ZeroUv4, _scratchCol4);
+        DrawExplicitDecal(null!, _scratchPts4, ZeroUv4, _scratchCol4); // untextured colour quad: no decal
         SetDecalMode(m);
     }
 
@@ -2953,7 +2953,7 @@ public abstract class PixelGameEngine
         var c = col ?? Pixel.WHITE;
         FillScratchQuad(pos, size);
         _scratchCol4[0] = _scratchCol4[1] = _scratchCol4[2] = _scratchCol4[3] = c;
-        DrawExplicitDecal(null, _scratchPts4, ZeroUv4, _scratchCol4);
+        DrawExplicitDecal(null!, _scratchPts4, ZeroUv4, _scratchCol4); // untextured colour quad: no decal
     }
 
     /// <summary>Draws a rectangle as a colour-quad decal with a per-corner gradient.</summary>
@@ -2969,7 +2969,7 @@ public abstract class PixelGameEngine
     {
         FillScratchQuad(pos, size);
         _scratchCol4[0] = colTL; _scratchCol4[1] = colBL; _scratchCol4[2] = colBR; _scratchCol4[3] = colTR;
-        DrawExplicitDecal(null, _scratchPts4, ZeroUv4, _scratchCol4);
+        DrawExplicitDecal(null!, _scratchPts4, ZeroUv4, _scratchCol4); // untextured colour quad: no decal
     }
 
     /// <summary>Draws a filled triangle as a solid colour decal.</summary>
@@ -2983,7 +2983,7 @@ public abstract class PixelGameEngine
         var c = col ?? Pixel.WHITE;
         _scratchPts4[0] = p0; _scratchPts4[1] = p1; _scratchPts4[2] = p2;
         _scratchCol4[0] = _scratchCol4[1] = _scratchCol4[2] = c;
-        DrawExplicitDecal(null, _scratchPts4, ZeroUv4, _scratchCol4, 3);
+        DrawExplicitDecal(null!, _scratchPts4, ZeroUv4, _scratchCol4, 3); // untextured colour triangle: no decal
     }
 
     /// <summary>Draws a triangle as a colour decal with a per-vertex gradient.</summary>
@@ -2999,7 +2999,7 @@ public abstract class PixelGameEngine
     {
         _scratchPts4[0] = p0; _scratchPts4[1] = p1; _scratchPts4[2] = p2;
         _scratchCol4[0] = c0; _scratchCol4[1] = c1; _scratchCol4[2] = c2;
-        DrawExplicitDecal(null, _scratchPts4, ZeroUv4, _scratchCol4, 3);
+        DrawExplicitDecal(null!, _scratchPts4, ZeroUv4, _scratchCol4, 3); // untextured colour triangle: no decal
     }
 
     /// <summary>Draws a decal rotated about a center point (submitted as a transformed-quad GPU task).</summary>

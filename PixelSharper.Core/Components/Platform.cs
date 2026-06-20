@@ -25,7 +25,7 @@ public abstract class Platform
     /// <summary>
     /// The engine this platform serves. Mirrors olc::Platform::ptrPGE; set during engine construction.
     /// </summary>
-    public static PixelGameEngine PtrPGE;
+    public static PixelGameEngine PtrPGE = null!;
 
     /// <summary>Performs one-time application start-up for the platform layer.</summary>
     /// <returns>A <see cref="FileReadCode"/> indicating success or failure.</returns>
