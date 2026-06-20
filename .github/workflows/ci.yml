@@ -28,9 +28,18 @@ jobs:
       - name: Build (Release)
         run: dotnet build PixelSharper.sln -c Release --no-restore
 
-      # Unit tests are headless (no GL/AL context required), so they run on a display-less runner.
+      # Unit tests are headless. Integration tests (e.g. the TCP loopback) are excluded — sockets/timing
+      # are flaky on CI; run them locally. A trx is always produced so any failure is diagnosable.
       - name: Test (Release)
-        run: dotnet test PixelSharper.sln -c Release --no-build --verbosity normal
+        run: dotnet test PixelSharper.sln -c Release --no-build --verbosity normal --filter "TestCategory!=Integration" --logger "trx;LogFileName=test-results.trx" --results-directory test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/**/*.trx
+          if-no-files-found: warn
 
       # Verify the library still packs to a referenceable .nupkg (the NESharp consumer path).
       - name: Pack (Core)

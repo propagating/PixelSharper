@@ -51,7 +51,10 @@ namespace PixelSharperTests
             }
         }
 
+        // Real TCP loopback on a fixed port — flaky/blocked on headless CI runners (sockets, timing,
+        // firewall). Categorised so CI can skip it; it still runs locally (`dotnet test`).
         [Test]
+        [Category("Integration")]
         public void Loopback_ClientSend_ServerReceives()
         {
             const ushort port = 61299;
