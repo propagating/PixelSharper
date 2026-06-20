@@ -34,6 +34,8 @@
 
     <ItemGroup>
       <PackageReference Include="OpenTK" Version="4.9.4" />
+      <PackageReference Include="StbImageSharp" Version="2.30.15" />
+      <PackageReference Include="StbImageWriteSharp" Version="1.16.7" />
     </ItemGroup>
 
 </Project>

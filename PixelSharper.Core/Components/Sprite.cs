@@ -24,8 +24,8 @@ public class Sprite
     /// <summary>Row-major pixel storage (length Width*Height); uploaded blittably to GL.</summary>
     /// <value>The backing list of pixels, indexed as <c>y * Width + x</c>.</value>
     public List<Pixel> PixelData { get; set; } = new();
-    /// <summary>Injected backend that decodes image files into sprites (test seam).</summary>
-    public static ImageLoader ImageLoader = null!;
+    /// <summary>Injected backend that decodes image files into sprites; defaults to the stb backend, replaced with a mock in tests.</summary>
+    public static ImageLoader ImageLoader = new ImageLoaderStb();
 
     /// <summary>Value new sprite cells are initialised to — olc's nDefaultPixel (opaque black, 0xFF000000).</summary>
     public static Pixel DefaultPixel = new(0, 0, 0, 0xFF);
