@@ -9,7 +9,9 @@ on:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest
+    # Windows-first project: OpenTK's native libraries ship with the Windows runtime, so the (headless)
+    # unit tests load them and pass here. A Linux leg would need the native libs apt-installed first.
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
