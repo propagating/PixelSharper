@@ -37,6 +37,7 @@ public class BlendBenchmarks
         Scalar(reference, Src, Blend);
         Check("Vector128", b => Simd128(b, Src, Blend), reference);
         Check("Vector256", b => Simd256(b, Src, Blend), reference);
+        Check("Vector512", b => Simd512(b, Src, Blend), reference);
     }
 
     private void Check(string name, Action<Pixel[]> blend, Pixel[] reference)
@@ -52,6 +53,7 @@ public class BlendBenchmarks
     [Benchmark(Baseline = true)] public uint Scalar_()  { Scalar(_buf, Src, Blend);  return _buf[0].N; }
     [Benchmark] public uint Simd128_() { Simd128(_buf, Src, Blend); return _buf[0].N; }
     [Benchmark] public uint Simd256_() { Simd256(_buf, Src, Blend); return _buf[0].N; }
+    [Benchmark] public uint Simd512_() { Simd512(_buf, Src, Blend); return _buf[0].N; }
 
     // ---- Scalar reference: exact copy of PixelGameEngine.BlendRowConstant ----
     private static void Scalar(Span<Pixel> row, Pixel src, float blend)
@@ -144,5 +146,48 @@ public class BlendBenchmarks
             return;
         }
         Simd128(row, src, blend);
+    }
+
+    // ---- Vector512: 16 pixels (64 bytes) per iteration (AVX-512 / Zen4). Composes 256-bit halves so it
+    // only uses Create overloads that definitely exist. Falls back to Simd256 when not accelerated. ----
+    private static void Simd512(Span<Pixel> row, Pixel src, float blend)
+    {
+        var a = src.Alpha / 255.0f * blend;
+        var c = 1.0f - a;
+        float kr = a * src.Red, kg = a * src.Green, kb = a * src.Blue;
+
+        if (Vector512.IsHardwareAccelerated && row.Length >= 16)
+        {
+            var cv = Vector512.Create(c);
+            var kv128 = Vector128.Create(kr, kg, kb, 0f);
+            var kv = Vector512.Create(Vector256.Create(kv128, kv128), Vector256.Create(kv128, kv128));
+            var alpha128 = Vector128.Create(0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255);
+            var alpha256 = Vector256.Create(alpha128, alpha128);
+            var alpha = Vector512.Create(alpha256, alpha256);
+            var bytes = MemoryMarshal.AsBytes(row);
+            int i = 0, limit = bytes.Length - (bytes.Length & 63);
+            for (; i < limit; i += 64)
+            {
+                var b = Vector512.Create(bytes.Slice(i, 64));
+                var lo = Vector512.WidenLower(b);   // ushort x32
+                var hi = Vector512.WidenUpper(b);
+                var f0 = Vector512.ConvertToSingle(Vector512.WidenLower(lo).AsInt32());
+                var f1 = Vector512.ConvertToSingle(Vector512.WidenUpper(lo).AsInt32());
+                var f2 = Vector512.ConvertToSingle(Vector512.WidenLower(hi).AsInt32());
+                var f3 = Vector512.ConvertToSingle(Vector512.WidenUpper(hi).AsInt32());
+                f0 = f0 * cv + kv; f1 = f1 * cv + kv; f2 = f2 * cv + kv; f3 = f3 * cv + kv;
+                var u0 = Vector512.Narrow(Vector512.ConvertToInt32(f0).AsUInt32(), Vector512.ConvertToInt32(f1).AsUInt32());
+                var u1 = Vector512.Narrow(Vector512.ConvertToInt32(f2).AsUInt32(), Vector512.ConvertToInt32(f3).AsUInt32());
+                var res = Vector512.Narrow(u0, u1) | alpha;
+                res.CopyTo(bytes.Slice(i, 64));
+            }
+            for (int px = i / 4; px < row.Length; px++)
+            {
+                var d = row[px];
+                row[px] = new Pixel((byte)(c * d.Red + kr), (byte)(c * d.Green + kg), (byte)(c * d.Blue + kb));
+            }
+            return;
+        }
+        Simd256(row, src, blend);
     }
 }
