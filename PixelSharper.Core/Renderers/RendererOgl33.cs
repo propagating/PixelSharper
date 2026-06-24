@@ -74,6 +74,20 @@ public class RendererOgl33 : Renderer
     /// <summary>A 1x1 white texture bound for decals/tasks that carry no decal of their own (olc's <c>rendBlankQuad</c>).</summary>
     private Renderable _blankQuad = null!;
 
+    // ---- Decal batching ----------------------------------------------------------------------------
+    // olc re-uploads a tiny vertex buffer and issues a draw call per decal. Instead, consecutive decals
+    // that share a texture + blend mode are converted to a single triangle list, accumulated here, and
+    // flushed as one BufferData + one DrawArrays. Any texture/mode change (or a full buffer) flushes
+    // first, so painter's order is preserved. Line/wireframe decals can't share a triangle batch and are
+    // drawn immediately (after flushing). The batch is also flushed at the start of every non-decal
+    // renderer op (layer quad, GPU task, present, clear, ...) so nothing renders out of order.
+    private const int BatchCapacityVerts = 65536;
+    private readonly Vertex[] _batchVerts = new Vertex[BatchCapacityVerts];
+    private int _batchCount;
+    private int _batchTexture = -1;
+    private DecalMode _batchMode;
+    private bool _batchActive;
+
     /// <summary>Fragment shader: sample the sprite texture and modulate by the interpolated vertex colour.</summary>
     private const string FragmentSource =
         "#version 330 core\n" +
@@ -208,12 +222,14 @@ public class RendererOgl33 : Renderer
     /// <summary>Presents the rendered frame by swapping the back buffer.</summary>
     public override void DisplayFrame()
     {
+        FlushDecalBatch();
         _context?.SwapBuffers();
     }
 
     /// <summary>Sets up per-frame GL state: blending on, the quad shader/VAO bound, white tint, 2D mode, culling off.</summary>
     public override void PrepareDrawing()
     {
+        FlushDecalBatch();
         GL.Enable(EnableCap.Blend);
         _decalMode = DecalMode.Normal;
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
@@ -263,6 +279,7 @@ public class RendererOgl33 : Renderer
     /// <param name="tint">Colour multiplied into the quad.</param>
     public override void DrawLayerQuad(Vector2d<float> offset, Vector2d<float> scale, Pixel tint)
     {
+        FlushDecalBatch();
         GL.Disable(EnableCap.CullFace);
         GL.BindBuffer(BufferTarget.ArrayBuffer, _vbQuad);
 
@@ -279,23 +296,105 @@ public class RendererOgl33 : Renderer
         GL.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
     }
 
-    /// <summary>Renders a queued decal instance as a 2D (or projectively-warped) textured primitive.</summary>
+    /// <summary>Queues a decal into the current triangle batch (or draws it immediately if it can't batch).</summary>
     /// <param name="decal">The queued decal instance carrying texture, blend mode, structure, and per-vertex data.</param>
+    /// <remarks>
+    /// <para>
+    /// Fan/strip/list decals are converted to a triangle list and accumulated; a change of texture or
+    /// blend mode (or a full buffer) flushes the batch first, so draw order is preserved. Line and
+    /// wireframe decals can't share a triangle batch, so they flush the batch and draw immediately.
+    /// </para>
+    /// </remarks>
     /// <seealso cref="DoGPUTask(GPUTask)"/>
     public override void DrawDecal(DecalInstance decal)
     {
-        GL.Disable(EnableCap.CullFace);
-        SetDecalMode(decal.Mode);
-        GL.BindTexture(TextureTarget.Texture2D, decal.Decal?.Id ?? _blankQuad.Decal.Id);
-        GL.BindBuffer(BufferTarget.ArrayBuffer, _vbQuad);
+        var texId = decal.Decal?.Id ?? _blankQuad.Decal.Id;
+
+        // Lines / wireframe use line primitives — can't merge into a triangle batch.
+        if (decal.Mode == DecalMode.Wireframe || decal.Structure == DecalStructure.Line)
+        {
+            FlushDecalBatch();
+            DrawDecalImmediate(decal, texId);
+            return;
+        }
 
         var points = (int)decal.Points;
-        for (var i = 0; i < points; i++)
+        if (points < 3) return;
+        var triVerts = decal.Structure == DecalStructure.List ? points : (points - 2) * 3;
+
+        if (_batchActive && (texId != _batchTexture || decal.Mode != _batchMode ||
+                             _batchCount + triVerts > _batchVerts.Length))
+            FlushDecalBatch();
+
+        if (!_batchActive)
         {
-            // pos = (x, y, z=w[i], w=0): the 2D shader path divides by z, giving the projective warp.
-            _vertexMem[i] = new Vertex(decal.Pos[i].X, decal.Pos[i].Y, decal.W[i], 0.0f,
-                decal.Uv[i].X, decal.Uv[i].Y, decal.Tint[i].N);
+            _batchActive = true;
+            _batchTexture = texId;
+            _batchMode = decal.Mode;
         }
+
+        AppendDecalTriangles(decal, points);
+    }
+
+    /// <summary>Appends a decal's primitive to the batch as a triangle list (cull is off, so winding is free).</summary>
+    private void AppendDecalTriangles(DecalInstance decal, int points)
+    {
+        switch (decal.Structure)
+        {
+            case DecalStructure.List:
+                for (var i = 0; i < points; i++) _batchVerts[_batchCount++] = DecalVertex(decal, i);
+                break;
+            case DecalStructure.Strip:
+                for (var i = 0; i + 2 < points; i++)
+                {
+                    _batchVerts[_batchCount++] = DecalVertex(decal, i);
+                    _batchVerts[_batchCount++] = DecalVertex(decal, i + 1);
+                    _batchVerts[_batchCount++] = DecalVertex(decal, i + 2);
+                }
+                break;
+            default: // Fan: (0, i, i+1)
+                for (var i = 1; i + 1 < points; i++)
+                {
+                    _batchVerts[_batchCount++] = DecalVertex(decal, 0);
+                    _batchVerts[_batchCount++] = DecalVertex(decal, i);
+                    _batchVerts[_batchCount++] = DecalVertex(decal, i + 1);
+                }
+                break;
+        }
+    }
+
+    /// <summary>Builds one screen-space vertex for decal point <paramref name="i"/> (2D-projective: z carries W).</summary>
+    private static Vertex DecalVertex(DecalInstance decal, int i) =>
+        new(decal.Pos[i].X, decal.Pos[i].Y, decal.W[i], 0.0f, decal.Uv[i].X, decal.Uv[i].Y, decal.Tint[i].N);
+
+    /// <summary>Emits the accumulated decal batch as a single buffer upload + triangle draw, then resets it.</summary>
+    private void FlushDecalBatch()
+    {
+        if (!_batchActive || _batchCount == 0) { _batchActive = false; _batchCount = 0; return; }
+
+        GL.Disable(EnableCap.CullFace);
+        SetDecalMode(_batchMode);
+        GL.BindTexture(TextureTarget.Texture2D, _batchTexture);
+        GL.BindBuffer(BufferTarget.ArrayBuffer, _vbQuad);
+        GL.BufferData(BufferTarget.ArrayBuffer, VertexStride * _batchCount, _batchVerts, BufferUsageHint.StreamDraw);
+        GL.Uniform1(_uniIs3D, 0);
+        GL.Uniform4(_uniTint, 1.0f, 1.0f, 1.0f, 1.0f);
+        GL.DrawArrays(PrimitiveType.Triangles, 0, _batchCount);
+
+        _batchCount = 0;
+        _batchActive = false;
+    }
+
+    /// <summary>Draws a single decal the un-batched way (line/wireframe decals that can't join a triangle batch).</summary>
+    private void DrawDecalImmediate(DecalInstance decal, int texId)
+    {
+        GL.Disable(EnableCap.CullFace);
+        SetDecalMode(decal.Mode);
+        GL.BindTexture(TextureTarget.Texture2D, texId);
+        GL.BindBuffer(BufferTarget.ArrayBuffer, _vbQuad);
+
+        var points = Math.Min((int)decal.Points, _vertexMem.Length);
+        for (var i = 0; i < points; i++) _vertexMem[i] = DecalVertex(decal, i);
 
         GL.BufferData(BufferTarget.ArrayBuffer, VertexStride * points, _vertexMem, BufferUsageHint.StreamDraw);
         GL.Uniform1(_uniIs3D, 0);
@@ -312,6 +411,7 @@ public class RendererOgl33 : Renderer
     /// <seealso cref="DrawDecal(DecalInstance)"/>
     public override void DoGPUTask(GPUTask task)
     {
+        FlushDecalBatch();
         SetDecalMode(task.Mode);
         GL.BindTexture(TextureTarget.Texture2D, task.Decal?.Id ?? _blankQuad.Decal.Id);
         GL.BindBuffer(BufferTarget.ArrayBuffer, _vbQuad);
@@ -467,6 +567,7 @@ public class RendererOgl33 : Renderer
     /// <param name="id">The GL texture id to bind.</param>
     public override void ApplyTexture(uint id)
     {
+        FlushDecalBatch();
         GL.BindTexture(TextureTarget.Texture2D, (int)id);
     }
 
@@ -475,6 +576,7 @@ public class RendererOgl33 : Renderer
     /// <param name="depth">When <c>true</c> the depth buffer is also cleared.</param>
     public override void ClearBuffer(Pixel p, bool depth)
     {
+        FlushDecalBatch();
         GL.ClearColor(p.Red / 255.0f, p.Green / 255.0f, p.Blue / 255.0f, p.Alpha / 255.0f);
         GL.Clear(ClearBufferMask.ColorBufferBit);
         if (depth)
@@ -486,6 +588,7 @@ public class RendererOgl33 : Renderer
     /// <param name="size">Width and height of the viewport in window pixels.</param>
     public override void UpdateViewport(Vector2d<int> pos, Vector2d<int> size)
     {
+        FlushDecalBatch();
         GL.Viewport(pos.X, pos.Y, size.X, size.Y);
     }
 }
