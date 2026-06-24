@@ -18,6 +18,7 @@ When porting a feature, find the corresponding C++ in `olcPixelGameEngine.h` and
 dotnet build PixelSharper.sln                      # build everything
 dotnet run --project PixelSharper.Examples         # the navigable showcase (one scene per feature)
 dotnet run --project PixelSharper.Examples -- --autotest  # cycle every showcase scene, then exit
+dotnet run --project PixelSharper.Examples -- --stress    # phased heavy-load perf stress harness (StressEngine), prints a summary, then exits (add --ogl10 to compare backends)
 dotnet test                                         # run all NUnit tests
 dotnet test --filter "FullyQualifiedName~SpriteTests"          # one fixture
 dotnet test --filter "Name=Constructor_Default_ShouldSetWidthAndHeightToZero"  # one test

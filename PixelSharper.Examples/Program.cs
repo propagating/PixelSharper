@@ -30,8 +30,19 @@ var scenes = new IExampleScene[]
 
 // Pass --autotest to cycle through every scene and exit (a smoke test of all scenes).
 // Pass --ogl10 to drive the showcase with the legacy fixed-function renderer instead of the default OGL33.
+// Pass --stress to run the performance stress harness (heavy mixed load, vsync off) and exit.
 var autotest = args.Contains("--autotest");
 var useOgl10 = args.Contains("--ogl10");
+var stress = args.Contains("--stress");
+
+if (stress)
+{
+    // 640x360 logical at 2x window, vsync OFF so frames run as fast as the load allows.
+    var rig = new StressEngine(useOgl10);
+    if (rig.Construct(640, 360, 2, 2, vsync: false) == FileReadCode.Ok)
+        rig.Start();
+    return;
+}
 
 var showcase = new Showcase(scenes, autotest, useOgl10);
 if (showcase.Construct(640, 480, 1, 1, vsync: true) == FileReadCode.Ok)
