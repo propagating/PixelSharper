@@ -38,8 +38,8 @@ public abstract class PixelGameEngine
     /// <remarks>The default returns <c>true</c>. Consulted by <see cref="Start"/> when a close is requested.</remarks>
     public virtual bool OnDestroy() => true;
     /// <summary>Engine-wide configuration constants (mirrors <see cref="PixelConfiguration"/>).</summary>
-    /// <value>The shared <see cref="PixelConfiguration"/> record exposing engine-wide constants.</value>
-    public static PixelConfiguration Configuration { get; set; }
+    /// <value>The shared <see cref="PixelConfiguration"/> record exposing engine-wide constants; defaults to <see cref="PixelConfiguration.Default"/>.</value>
+    public static PixelConfiguration Configuration { get; set; } = PixelConfiguration.Default;
 
     /// <summary>NDC size of a single screen pixel (olc's vPixel) — 2/screenW by 2/screenH.</summary>
     /// <value>The width and height of one engine pixel in normalised device coordinates (range -1..1).</value>

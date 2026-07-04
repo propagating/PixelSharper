@@ -60,14 +60,23 @@ public struct Pixel : IEquatable<Pixel>
         Alpha = (byte)(a * 255.0f);
     }
 
+    /// <summary>
+    /// The default alpha channel for a constructed pixel (olc's <c>nDefaultAlpha</c>), fully opaque.
+    /// </summary>
+    /// <remarks>
+    /// A C# default parameter value must be a compile-time constant, so this <c>const</c> — not the
+    /// runtime-tweakable <see cref="PixelConfiguration.DefaultAlpha"/> — seeds the constructor default.
+    /// <see cref="PixelConfiguration.Default"/> is built from this same constant, so the two never drift.
+    /// </remarks>
+    public const byte DefaultAlpha = 0xFF;
+
     /// <summary>Constructs from 0..255 byte channels (alpha defaults to opaque).</summary>
     /// <param name="red">Red channel, 0..255.</param>
     /// <param name="green">Green channel, 0..255.</param>
     /// <param name="blue">Blue channel, 0..255.</param>
-    /// <param name="alpha">Alpha channel, 0..255; defaults to <c>0xFF</c> (opaque).</param>
+    /// <param name="alpha">Alpha channel, 0..255; defaults to <see cref="DefaultAlpha"/> (opaque).</param>
     /// <seealso cref="Pixel(float, float, float, float)"/>
-    //TODO: update alpha to use default from CoreConfig Settings
-    public Pixel(byte red, byte green, byte blue, byte alpha = 0XFF) : this()
+    public Pixel(byte red, byte green, byte blue, byte alpha = DefaultAlpha) : this()
     {
         N = (uint)(red | green << 8 | blue << 16 | alpha << 24);
     }

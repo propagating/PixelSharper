@@ -1,3 +1,5 @@
+using PixelSharper.Core.Components;
+
 namespace PixelSharper.Core;
 
 
@@ -14,6 +16,22 @@ public readonly record struct PixelConfiguration(byte TotalMouseButtons,
                                                  byte SpacesPerTab,
                                                  nuint MaxVertices)
 {
+    /// <summary>
+    /// The engine defaults, mirroring olc's namespace-scope <c>constexpr</c>s
+    /// (<c>nMouseButtons=5</c>, <c>nDefaultAlpha=0xFF</c>, <c>nTabSizeInSpaces=4</c>, <c>nMaxVerts=128</c>).
+    /// </summary>
+    /// <remarks>
+    /// <see cref="DefaultAlpha"/> is seeded from <see cref="Pixel.DefaultAlpha"/> — the same constant the
+    /// <see cref="Pixel(byte, byte, byte, byte)"/> constructor uses as its parameter default — so the
+    /// configured default and the constructor default cannot drift apart.
+    /// </remarks>
+    /// <value>A <see cref="PixelConfiguration"/> holding the stock engine constants.</value>
+    public static PixelConfiguration Default { get; } = new(
+        TotalMouseButtons: 5,
+        DefaultAlpha: Pixel.DefaultAlpha,
+        SpacesPerTab: 4,
+        MaxVertices: 128);
+
     /// <summary>
     /// The default packed RGBA pixel value, built from <see cref="DefaultAlpha"/> shifted into the
     /// high byte (RGB left at zero).

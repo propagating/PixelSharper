@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using PixelSharper.Core;
 using PixelSharper.Core.Components;
 
 
@@ -24,6 +25,24 @@ public class PixelConstructionTests
             Assert.AreEqual(pixel.Blue, 100);
             Assert.AreEqual(pixel.Alpha, 255);
         });
+    }
+
+    [Test]
+    public void OmittedAlpha_DefaultsToOpaque()
+    {
+        // The 3-arg construction uses the Pixel.DefaultAlpha constant (olc's nDefaultAlpha).
+        var pixel = new Pixel(10, 20, 30);
+        Assert.AreEqual(0xFF, pixel.Alpha);
+        Assert.AreEqual(0xFF, Pixel.DefaultAlpha);
+    }
+
+    [Test]
+    public void Configuration_Default_SharesPixelDefaultAlpha()
+    {
+        // The wired-up engine default must agree with the constructor default, and the packed
+        // DefaultPixel must be that alpha in the high byte with zero RGB.
+        Assert.AreEqual(Pixel.DefaultAlpha, PixelConfiguration.Default.DefaultAlpha);
+        Assert.AreEqual(unchecked((uint)(Pixel.DefaultAlpha << 24)), PixelConfiguration.Default.DefaultPixel);
     }
 }
 
