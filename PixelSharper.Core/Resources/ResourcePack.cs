@@ -29,6 +29,23 @@ public class ResourcePack
     private static readonly byte[] Salt =
         new byte[] { 2, 3, 16, 125, 21, 232, 4, 189 };
 
+    /// <summary>Default PBKDF2 (SHA-512) iteration count used to stretch a password into the AES key.</summary>
+    public const int DefaultKeyDerivationIterations = 655360;
+
+    /// <summary>
+    /// PBKDF2 iteration count used by <see cref="TransformKey"/>. Raise it to harden against brute-force
+    /// at the cost of slower load/save.
+    /// </summary>
+    /// <value>The iteration count; defaults to <see cref="DefaultKeyDerivationIterations"/>.</value>
+    /// <remarks>
+    /// <para>
+    /// The iteration count is part of the key derivation, so a pack must be loaded with the same value it
+    /// was saved with — otherwise the derived key differs and decryption fails. It is intentionally not
+    /// stored in the pack (matching olc), so change it only if you control both ends.
+    /// </para>
+    /// </remarks>
+    public static int KeyDerivationIterations { get; set; } = DefaultKeyDerivationIterations;
+
     /// <summary>Creates an empty pack with a fresh stream and file map.</summary>
     public ResourcePack()
     {
@@ -45,7 +62,8 @@ public class ResourcePack
         {
             var info = new FileInfo(filePath);
             var resourceFile = new ResourceFile((int)info.Length);
-            FileMap.Add(filePath, resourceFile);
+            //Indexer, not Add: re-adding a file refreshes its entry (olc overwrites too).
+            FileMap[filePath] = resourceFile;
             return true;
         }
 
@@ -81,12 +99,13 @@ public class ResourcePack
                 ReadBinaryData();
                 break;
             case ResourcePackProtectionMode.Scrambled:
-                if (string.IsNullOrWhiteSpace(key)) return false;
-                break;
+                //Scrambled packs are not supported yet — report failure instead of falling through
+                //to Loaded(), which would claim success without having read anything.
+                return false;
             default:
                 throw new ArgumentOutOfRangeException(nameof(protectionMode), protectionMode, null);
         }
-        
+
 
         return Loaded();
     }
@@ -104,10 +123,12 @@ public class ResourcePack
             Options = FileOptions.RandomAccess,
             Share = FileShare.Read,
         };
-        var fs = new FileStream(filePath, options);
+        using var fs = new FileStream(filePath, options);
         var ms = new MemoryStream();
         fs.CopyTo(ms);
 
+        //CopyTo leaves the stream at its end; rewind so the header read starts at offset 0.
+        ms.Position = 0;
         ResourceStream = ms;
     }
 
@@ -124,19 +145,19 @@ public class ResourcePack
     /// <exception cref="CryptographicException">Decryption fails, e.g. the <paramref name="key"/> is wrong.</exception>
     private void LoadEncryptedResources(string filePath, string key)
     {
-        byte[] binaryBuffer;
-        using (var fs = new FileStream(filePath, FileMode.Open))
+        var ms = new MemoryStream();
+        using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
         {
             using (var aes = Aes.Create())
             {
                 aes.Key = TransformKey(key);
                 aes.Padding = PaddingMode.ISO10126;
                 aes.Mode = CipherMode.CBC;
-                
+
                 var iv = new byte[aes.IV.Length];
                 var numBytesToRead = aes.IV.Length;
                 var currentByte = 0;
-            
+
                 while (numBytesToRead > 0)
                 {
                     var n = fs.Read(iv, currentByte, numBytesToRead);
@@ -151,16 +172,15 @@ public class ResourcePack
 
                 using (var cs = new CryptoStream(fs, decryptor, CryptoStreamMode.Read))
                 {
-                    binaryBuffer = new byte[(int)fs.Length];
-                    
-                    //Read returns the number of bytes read and can be used to validate
-                    //that we actually read the entire file into our buffer
-                    var bytesRead  = cs.Read(binaryBuffer, 0, (int)fs.Length);
+                    //CryptoStream may return fewer bytes than asked for on any single Read, so drain it
+                    //fully via CopyTo rather than a one-shot Read (which left all but the first chunk zero).
+                    cs.CopyTo(ms);
                 }
             }
         }
 
-        ResourceStream = new MemoryStream(binaryBuffer);
+        ms.Position = 0;
+        ResourceStream = ms;
     }
 
     /// <summary>Parses the pack header (file size, map size) and populates the file map.</summary>
@@ -205,7 +225,6 @@ public class ResourcePack
                 return SavePlainResourcePack(filePath);
             case ResourcePackProtectionMode.Encrypted:
                 if (string.IsNullOrWhiteSpace(key)) return false;
-                if (File.Exists(filePath))File.Delete(filePath);
                 return SaveEncryptedResources(filePath, key);
             case ResourcePackProtectionMode.Scrambled:
                 if (string.IsNullOrWhiteSpace(key)) return false;
@@ -224,7 +243,9 @@ public class ResourcePack
     /// <exception cref="System.IO.IOException">An I/O error occurs writing the file.</exception>
     private bool SavePlainResourcePack(string filePath)
     {
-        using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
+        //FileMode.Create truncates: OpenOrCreate left a longer pre-existing file's tail bytes in
+        //place, and the back-patched total size then recorded the stale length.
+        using (var fs = new FileStream(filePath, FileMode.Create))
         {
             using (var bw = new BinaryWriter(fs))
             {
@@ -269,7 +290,9 @@ public class ResourcePack
 
             var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
             
-            using (var fs = new FileStream(filePath, FileMode.OpenOrCreate))
+            //FileMode.Create truncates any pre-existing file (this used to be done with an explicit
+            //File.Delete in SaveResourcePack; the plain path had no such guard at all).
+            using (var fs = new FileStream(filePath, FileMode.Create))
             {
                 fs.Write(aes.IV, 0, aes.IV.Length);
                 using (var cs = new CryptoStream(fs, encryptor, CryptoStreamMode.Write))
@@ -331,9 +354,14 @@ public class ResourcePack
             resourceFile.ResourceOffset = (int)position;
             FileMap[resource] = resourceFile;
 
-            //TODO: replace with streaming file read in case the file is too large to fit in memory
-            var fileBytes = File.ReadAllBytes(resource);
-            bw.Write(fileBytes);
+            //Stream the file straight through the writer's stream so a large asset never has to
+            //fit in memory all at once. Flush the writer first so its buffered file-map bytes land
+            //ahead of the raw copy and stay in order.
+            bw.Flush();
+            using (var fs = new FileStream(resource, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                fs.CopyTo(bw.BaseStream);
+            }
             position = bw.BaseStream.Position;
             bw.Flush();
         }
@@ -399,10 +427,18 @@ public class ResourcePack
         return new ResourceBuffer();
     }
     /// <summary>True when a pack stream is loaded and readable.</summary>
-    /// <returns><c>true</c> if the resource stream is readable; otherwise <c>false</c>.</returns>
+    /// <returns><c>true</c> if a non-empty pack stream has been loaded; otherwise <c>false</c>.</returns>
+    /// <remarks>
+    /// <para>
+    /// Mirrors olc's <c>baseFile.is_open()</c>: a freshly constructed pack reports not-loaded.
+    /// <c>CanRead</c> alone is insufficient — an empty <see cref="MemoryStream"/> is readable, which made
+    /// this return <c>true</c> before any load and made <see cref="GetFileBuffer"/>'s empty-buffer
+    /// fallback unreachable.
+    /// </para>
+    /// </remarks>
     public bool Loaded()
     {
-        return ResourceStream.CanRead;
+        return ResourceStream.CanRead && ResourceStream.Length > 0;
     }
 
     /// <summary>Normalises a path to POSIX separators (backslash to forward slash).</summary>
@@ -428,11 +464,10 @@ public class ResourcePack
     /// </remarks>
     private static byte[] TransformKey(string password, int keyBytes = 32)
     {
-        //TODO: make this configurable
-        const int iterations = 655360;
         // KeyBytes are 32*8 = 256 bits for AES. Rfc2898DeriveBytes.Pbkdf2 is the non-obsolete static API
         // (the instance constructors are deprecated, SYSLIB0060); same PBKDF2/SHA-512 derivation over the
-        // fixed Salt, so the key is identical and existing encrypted packs still decrypt.
-        return Rfc2898DeriveBytes.Pbkdf2(password, Salt, iterations, HashAlgorithmName.SHA512, keyBytes);
+        // fixed Salt, so at the default iteration count the key is identical and existing encrypted packs
+        // still decrypt.
+        return Rfc2898DeriveBytes.Pbkdf2(password, Salt, KeyDerivationIterations, HashAlgorithmName.SHA512, keyBytes);
     }
 }
